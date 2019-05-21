@@ -1,8 +1,8 @@
 # Installation
 - Clone: clone our_branch to local:
 ```shell
-    git clone our_branch
-    cd our_branch
+    git clone https://github.com/GongCheng1919/Quantization-caffe.git
+    cd Quantization-caffe
 ```
 - Merge: If you want to merge the [latest Caffe](https://github.com/BVLC/caffe) into the this branch, see the following commands:
 ```
@@ -17,10 +17,10 @@ Our Caffe branch support configure quantization.
 If you do not configure any quantization parameters in the model, 
 the full-precision network model will be executed by default.
 
-### 1, Configure quantization
+### 1. Configure quantization
 Once the installation is complete, you can add the specified compression parameters (as follows) to each layer to indicate the compression operations the layer needs to perform.
 ```
-  weights_compress:"Ternary_Quantize" 
+  weights_compress:"ULQ" 
   weights_compress_param{
     maxbits:8
   }
@@ -63,7 +63,7 @@ delta:             Real (Float). Can't be specified manually. It will be generat
                    For Ternary_Quantize: referring to delta in a paper 1 (reference 1).
                    For ULQ: referring to beta in a paper 2 (reference 2).
 ```
-### 2, Obtaining the quantized weights and compression parameters of quantized model
+### 2. Obtaining the quantized weights and compression parameters of quantized model
 Obtaining the weights of quantized model:
 ```python
 # using pycaffe to get the weigts of each layer
