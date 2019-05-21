@@ -98,7 +98,8 @@ Note: for ease of calculation, all parameters of quantized model have been scale
 of the integer (such as alpha), see the following steps
 
 # Demo
-We use lenet5 as a demo.
+We use lenet5 as a demo. You can follow these steps or run ```python ./demo.py``` directly 
+(using your python version which install the pycaffe) or going to [quantization demo](quantization_demo.md).
 ### Prepare enviroment and data 
 Set up the Python environment: we'll use the pylab import for numpy and plot inline.
 ```python
