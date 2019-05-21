@@ -55,7 +55,7 @@ class Solver {
   // The main entry of the solver function. In default, iter will be zero. Pass
   // in a non-zero iter number to resume training for a pre-trained net.
   virtual void Solve(const char* resume_file = NULL);
-  inline void Solve(const string& resume_file) { Solve(resume_file.c_str()); }
+  inline void Solve(const string resume_file) { Solve(resume_file.c_str()); }
   void Step(int iters);
   // The Restore method simply dispatches to one of the
   // RestoreSolverStateFrom___ protected methods. You should implement these
@@ -98,7 +98,7 @@ class Solver {
   virtual void ApplyUpdate() = 0;
 
  protected:
-  string SnapshotFilename(const string& extension);
+  string SnapshotFilename(const string extension);
   string SnapshotToBinaryProto();
   string SnapshotToHDF5();
   // The test routine
@@ -129,6 +129,10 @@ class Solver {
   // Timing information, handy to tune e.g. nbr of GPUs
   Timer iteration_timer_;
   float iterations_last_;
+  
+  //GC add accuracy_list、loss_list、accuracy_5_list文件保存每次训练后的结果
+  vector<float> accuracy_list_,loss_list_,accuracy_5_list_;
+  void Display_list();// output list defined as above
 
   DISABLE_COPY_AND_ASSIGN(Solver);
 };

@@ -10,7 +10,8 @@
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 cd "$DIR"
 
-echo "Downloading..."
+echo "Downloading... to "
+echo DIR
 
 wget -c http://dl.caffe.berkeleyvision.org/caffe_ilsvrc12.tar.gz
 

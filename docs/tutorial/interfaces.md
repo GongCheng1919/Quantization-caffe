@@ -129,8 +129,8 @@ Use CPU:
 
 Use GPU and specify its gpu_id:
 
-    caffe.set_device(gpu_id);
     caffe.set_mode_gpu();
+    caffe.set_device(gpu_id);
 
 #### Create a network and access its layers and blobs
 

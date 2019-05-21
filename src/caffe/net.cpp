@@ -5,9 +5,7 @@
 #include <utility>
 #include <vector>
 
-#ifdef USE_HDF5
 #include "hdf5.h"
-#endif  // USE_HDF5
 
 #include "caffe/common.hpp"
 #include "caffe/layer.hpp"
@@ -38,6 +36,18 @@ Net<Dtype>::Net(const string& param_file, Phase phase,
       param.mutable_state()->add_stage((*stages)[i]);
     }
   }
+  //输出载入的参数
+  /*
+  for(int i=0;i<param.layer_size();i++){
+	  std::cout<<"\n"<<param.layer(i).name()<<": activations_compress_param_size="
+	  <<param.layer(i).activations_compress_param_size()<<"\n";
+	  if(param.layer(i).activations_compress_param_size()>0){
+		  std::cout<<"delta="<<param.layer(i).activations_compress_param(0).delta()
+					<<",alpha="<<param.layer(i).activations_compress_param(0).alpha()
+					<<",fixedpos="<<param.layer(i).activations_compress_param(0).fixedpos()
+					<<",maxbits="<<param.layer(i).activations_compress_param(0).maxbits();
+	  }
+  }*/
   param.mutable_state()->set_level(level);
   Init(param);
 }
@@ -166,7 +176,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
   // loss.  We can skip backward computation for blobs that don't contribute
   // to the loss.
   // Also checks if all bottom blobs don't need backward computation (possible
-  // because the skip_propagate_down param) and so we can skip backward
+  // because the skip_propagate_down param) and so we can skip bacward
   // computation for the entire layer
   set<string> blobs_under_loss;
   set<string> blobs_skip_backp;
@@ -666,6 +676,7 @@ void Net<Dtype>::UpdateDebugInfo(const int param_id) {
 template <typename Dtype>
 void Net<Dtype>::ShareTrainedLayersWith(const Net* other) {
   int num_source_layers = other->layers().size();
+  LOG(INFO)<<"Load LayerParameter from Train Net";
   for (int i = 0; i < num_source_layers; ++i) {
     Layer<Dtype>* source_layer = other->layers()[i].get();
     const string& source_layer_name = other->layer_names()[i];
@@ -681,6 +692,29 @@ void Net<Dtype>::ShareTrainedLayersWith(const Net* other) {
     DLOG(INFO) << "Copying source layer " << source_layer_name;
     vector<shared_ptr<Blob<Dtype> > >& target_blobs =
         layers_[target_layer_id]->blobs();
+	//设置layer param
+	LayerParameter* target_layer_param= layers_[target_layer_id]->mutable_layer_param();
+	const LayerParameter src_layer_param= source_layer->layer_param();
+	//copy compress_param from source_layer to target_layer_param
+	//LOG(INFO)<<"Load LayerParameter from .caffemodel file for layer : "<<source_layer_name;
+	//LOG(INFO)<<"source weights_compress_param_size="<<src_layer_param.weights_compress_param_size();
+	for(int i=0;i<src_layer_param.weights_compress_param_size() && i<target_layer_param->weights_compress_size();i++)
+	{
+		if(i>=target_layer_param->weights_compress_param_size()){
+			target_layer_param->add_weights_compress_param();
+		}
+		target_layer_param->mutable_weights_compress_param(i)->CopyFrom(src_layer_param.weights_compress_param(i));
+	}
+	//LOG(INFO)<<"source activations_compress_param_size="<<src_layer_param.activations_compress_param_size();
+	for(int i=0;i<src_layer_param.activations_compress_param_size() && i<target_layer_param->activations_compress_size();i++)
+	{
+		if(i>=target_layer_param->activations_compress_param_size()){
+			target_layer_param->add_activations_compress_param();
+		}
+		target_layer_param->mutable_activations_compress_param(i)->CopyFrom(src_layer_param.activations_compress_param(i));
+	}
+	//LOG(INFO)<<"Have loaded LayerParameter from .caffemodel file for layer : "<<source_layer_name;
+    //end GC
     CHECK_EQ(target_blobs.size(), source_layer->blobs().size())
         << "Incompatible number of blobs for layer " << source_layer_name;
     for (int j = 0; j < target_blobs.size(); ++j) {
@@ -747,30 +781,78 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
       continue;
     }
     DLOG(INFO) << "Copying source layer " << source_layer_name;
+	//这里是直接设置blobs
     vector<shared_ptr<Blob<Dtype> > >& target_blobs =
         layers_[target_layer_id]->blobs();
+	//设置layer param
+	LayerParameter* target_layer_param= layers_[target_layer_id]->mutable_layer_param();
+	//LayerParameter* src_layer_param= &source_layer;
+	//copy compress_param from source_layer to target_layer_param
+	LOG(INFO)<<"Load LayerParameter from .caffemodel file for layer : "<<source_layer_name;
+	LOG(INFO)<<"source weights_compress_param_size="<<source_layer.weights_compress_param_size();
+	for(int i=0;i<source_layer.weights_compress_param_size() && i<target_layer_param->weights_compress_size();i++)
+	{
+		if(source_layer.weights_compress(i)!=target_layer_param->weights_compress(i)){
+			LOG(ERROR)<<"Different compress parameters at "<<source_layer_name;
+		}
+		if(i>=target_layer_param->weights_compress_param_size()){
+			target_layer_param->add_weights_compress_param();
+		}
+		LOG(INFO)<<"copy weights compress " <<source_layer.weights_compress(i)<<" parameter from saved model!";
+		target_layer_param->mutable_weights_compress_param(i)->CopyFrom(source_layer.weights_compress_param(i));
+	}
+	LOG(INFO)<<"source activations_compress_param_size="<<source_layer.activations_compress_param_size();
+	for(int i=0;i<source_layer.activations_compress_param_size() && i<target_layer_param->activations_compress_size();i++)
+	{
+		//LOG(INFO)<<"Test activations compress name";
+		if(source_layer.activations_compress(i)!=target_layer_param->activations_compress(i)){
+			LOG(ERROR)<<"Different compress parameters at "<<source_layer_name;
+		}
+		//LOG(INFO)<<"Add activations compress param for target_layer:"
+		//<<i<<","<<target_layer_param->activations_compress_param_size();
+		if(i>=target_layer_param->activations_compress_param_size()){
+			target_layer_param->add_activations_compress_param();
+		}
+		LOG(INFO)<<"copy activations compress " <<source_layer.activations_compress(i)<<" parameter from saved model!";
+		target_layer_param->mutable_activations_compress_param(i)->CopyFrom(source_layer.activations_compress_param(i));
+	}
+	LOG(INFO)<<"Have loaded LayerParameter from .caffemodel file for layer : "<<source_layer_name;
     CHECK_EQ(target_blobs.size(), source_layer.blobs_size())
         << "Incompatible number of blobs for layer " << source_layer_name;
     for (int j = 0; j < target_blobs.size(); ++j) {
-      if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
-        Blob<Dtype> source_blob;
-        const bool kReshape = true;
-        source_blob.FromProto(source_layer.blobs(j), kReshape);
-        LOG(FATAL) << "Cannot copy param " << j << " weights from layer '"
-            << source_layer_name << "'; shape mismatch.  Source param shape is "
-            << source_blob.shape_string() << "; target param shape is "
-            << target_blobs[j]->shape_string() << ". "
-            << "To learn this layer's parameters from scratch rather than "
-            << "copying from a saved net, rename the layer.";
-      }
-      const bool kReshape = false;
-      target_blobs[j]->FromProto(source_layer.blobs(j), kReshape);
+		if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
+			Blob<Dtype> source_blob;
+			const bool kReshape = true;
+			source_blob.FromProto(source_layer.blobs(j), kReshape);
+			LOG(FATAL) << "Cannot copy param " << j << " weights from layer '"
+				<< source_layer_name << "'; shape mismatch.  Source param shape is "
+				<< source_blob.shape_string() << "; target param shape is "
+				<< target_blobs[j]->shape_string() << ". "
+				<< "To learn this layer's parameters from scratch rather than "
+				<< "copying from a saved net, rename the layer.";
+		}
+		const bool kReshape = false;
+		//根据压缩参数载入权值：
+		//如果存在压缩参数，则载入全精度权值，如果存在量化值则载入
+		//如果不存在压缩参数，则优先寻找量化权值载入，如果不存在量化权值，则载入全精度权值
+		if(j<target_layer_param->weights_compress_size()){
+			LOG(INFO)<<target_layer_param->name()<<" Priority loading Full Precision weights to float weights."
+			<<" Maybe you want to retrain compress NN from exist one.";
+			//blobs_[i]->FromProto(layer_param_.blobs(i),true,true);
+			target_blobs[j]->FromProto(source_layer.blobs(j), kReshape,true);
+		}else{
+			LOG(INFO)<<target_layer_param->name()<<" Priority loading Quantized weights to float weights."
+			<<" Maybe you just want to train a no-compress NN or using a quantized weights for Float NN.";
+			//blobs_[i]->FromProto(layer_param_.blobs(i),true,false);
+			target_blobs[j]->FromProto(source_layer.blobs(j), kReshape,false);
+		}
+      //target_blobs[j]->FromProto(source_layer.blobs(j), kReshape);
     }
   }
 }
 
 template <typename Dtype>
-void Net<Dtype>::CopyTrainedLayersFrom(const string& trained_filename) {
+void Net<Dtype>::CopyTrainedLayersFrom(const string trained_filename) {
   if (H5Fis_hdf5(trained_filename.c_str())) {
     CopyTrainedLayersFromHDF5(trained_filename);
   } else {
@@ -780,15 +862,14 @@ void Net<Dtype>::CopyTrainedLayersFrom(const string& trained_filename) {
 
 template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFromBinaryProto(
-    const string& trained_filename) {
+    const string trained_filename) {
   NetParameter param;
   ReadNetParamsFromBinaryFileOrDie(trained_filename, &param);
   CopyTrainedLayersFrom(param);
 }
 
 template <typename Dtype>
-void Net<Dtype>::CopyTrainedLayersFromHDF5(const string& trained_filename) {
-#ifdef USE_HDF5
+void Net<Dtype>::CopyTrainedLayersFromHDF5(const string trained_filename) {
   hid_t file_hid = H5Fopen(trained_filename.c_str(), H5F_ACC_RDONLY,
                            H5P_DEFAULT);
   CHECK_GE(file_hid, 0) << "Couldn't open " << trained_filename;
@@ -835,10 +916,6 @@ void Net<Dtype>::CopyTrainedLayersFromHDF5(const string& trained_filename) {
   }
   H5Gclose(data_hid);
   H5Fclose(file_hid);
-#else
-  LOG(FATAL) << "CopyTrainedLayersFromHDF5 requires hdf5;"
-             << " compile with USE_HDF5.";
-#endif  // USE_HDF5
 }
 
 template <typename Dtype>
@@ -855,8 +932,6 @@ void Net<Dtype>::ToProto(NetParameter* param, bool write_diff) const {
 
 template <typename Dtype>
 void Net<Dtype>::ToHDF5(const string& filename, bool write_diff) const {
-// This code is taken from https://github.com/sh1r0/caffe-android-lib
-#ifdef USE_HDF5
   hid_t file_hid = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
       H5P_DEFAULT);
   CHECK_GE(file_hid, 0)
@@ -910,10 +985,6 @@ void Net<Dtype>::ToHDF5(const string& filename, bool write_diff) const {
     H5Gclose(diff_hid);
   }
   H5Fclose(file_hid);
-// This code is taken from https://github.com/sh1r0/caffe-android-lib
-#else
-  LOG(FATAL) << "ToHDF5 requires hdf5; compile with USE_HDF5.";
-#endif  // USE_HDF5
 }
 
 template <typename Dtype>

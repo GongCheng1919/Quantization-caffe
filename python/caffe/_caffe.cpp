@@ -416,7 +416,7 @@ BOOST_PYTHON_MODULE(_caffe) {
     .def("reshape", &Net<Dtype>::Reshape)
     .def("clear_param_diffs", &Net<Dtype>::ClearParamDiffs)
     // The cast is to select a particular overload.
-    .def("copy_from", static_cast<void (Net<Dtype>::*)(const string&)>(
+    .def("copy_from", static_cast<void (Net<Dtype>::*)(const string)>(
         &Net<Dtype>::CopyTrainedLayersFrom))
     .def("share_with", &Net<Dtype>::ShareTrainedLayersWith)
     .add_property("_blob_loss_weights", bp::make_function(
@@ -471,22 +471,58 @@ BOOST_PYTHON_MODULE(_caffe) {
     .add_property("_gpu_diff_ptr",
         reinterpret_cast<uintptr_t (Blob<Dtype>::*)()>(
           &Blob<Dtype>::mutable_gpu_diff))
+	//add GC Quantization
+	.add_property("_gpu_quantize_ptr",
+        reinterpret_cast<uintptr_t (Blob<Dtype>::*)()>(
+          &Blob<Dtype>::mutable_gpu_quantize))
 #endif
     .add_property("data",     bp::make_function(&Blob<Dtype>::mutable_cpu_data,
           NdarrayCallPolicies()))
     .add_property("diff",     bp::make_function(&Blob<Dtype>::mutable_cpu_diff,
+          NdarrayCallPolicies()))
+	//add GC Quantization functions
+	.add_property("quantize",     bp::make_function(&Blob<Dtype>::mutable_cpu_quantize,
           NdarrayCallPolicies()));
   BP_REGISTER_SHARED_PTR_TO_PYTHON(Blob<Dtype>);
 
+  //bp::class_<CompressParameter, shared_ptr<CompressParameter>,
+    //boost::noncopyable>("CompressParameter", bp::no_init)
+    //.add_property("alpha", &CompressParameter::alpha,
+    //      bp::return_internal_reference<>()))
+    //.add_property("delta", bp::make_function(&CompressParameter::delta,
+    //      bp::return_internal_reference<>()))
+    //.add_property("fixedpos", bp::make_function(&CompressParameter::fixedpos,
+    //      bp::return_internal_reference<>()))
+    //.add_property("maxbits", bp::make_function(&CompressParameter::maxbits,
+    //      bp::return_internal_reference<>()));
+    // BP_REGISTER_SHARED_PTR_TO_PYTHON(CompressParameter);
+          
   bp::class_<Layer<Dtype>, shared_ptr<PythonLayer<Dtype> >,
     boost::noncopyable>("Layer", bp::init<const LayerParameter&>())
     .add_property("blobs", bp::make_function(&Layer<Dtype>::blobs,
+          bp::return_internal_reference<>()))
+    .add_property("weights_compress", bp::make_function(&Layer<Dtype>::weights_compress,
+          bp::return_internal_reference<>()))
+    .add_property("weights_compress_param", bp::make_function(&Layer<Dtype>::weights_compress_param,
+          bp::return_internal_reference<>()))
+    .add_property("activations_compress", bp::make_function(&Layer<Dtype>::activations_compress,
+          bp::return_internal_reference<>()))
+    .add_property("activations_compress_param", bp::make_function(&Layer<Dtype>::activations_compress_param,
           bp::return_internal_reference<>()))
     .def("setup", &Layer<Dtype>::LayerSetUp)
     .def("reshape", &Layer<Dtype>::Reshape)
     .add_property("type", bp::make_function(&Layer<Dtype>::type));
   BP_REGISTER_SHARED_PTR_TO_PYTHON(Layer<Dtype>);
 
+  bp::class_<CompressParameter, shared_ptr<CompressParameter>,
+     boost::noncopyable >("CompressParameter", bp::no_init)
+    .add_property("alpha", &CompressParameter::alpha)
+    .add_property("delta", &CompressParameter::delta)
+    .add_property("maxbits", &CompressParameter::maxbits)
+    .add_property("fixedpos", &CompressParameter::fixedpos)
+    .def("set_maxbits",&CompressParameter::set_maxbits);
+   BP_REGISTER_SHARED_PTR_TO_PYTHON(CompressParameter);
+           
   bp::class_<SolverParameter>("SolverParameter", bp::no_init)
     .add_property("max_iter", &SolverParameter::max_iter)
     .add_property("display", &SolverParameter::display)
@@ -555,6 +591,9 @@ BOOST_PYTHON_MODULE(_caffe) {
     .def(bp::vector_indexing_suite<vector<shared_ptr<Net<Dtype> > >, true>());
   bp::class_<vector<bool> >("BoolVec")
     .def(bp::vector_indexing_suite<vector<bool> >());
+    
+  bp::class_<vector<shared_ptr<CompressParameter> > >("CompressParameterVec")
+    .def(bp::vector_indexing_suite<vector<shared_ptr<CompressParameter> >, true>());
 
   bp::class_<NCCL<Dtype>, shared_ptr<NCCL<Dtype> >,
     boost::noncopyable>("NCCL",

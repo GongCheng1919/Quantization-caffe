@@ -8,7 +8,7 @@ namespace caffe {
 
 class SignalHandler {
  public:
-  // Constructor. Specify what action to take when a signal is received.
+  // Contructor. Specify what action to take when a signal is received.
   SignalHandler(SolverAction::Enum SIGINT_action,
                 SolverAction::Enum SIGHUP_action);
   ~SignalHandler();

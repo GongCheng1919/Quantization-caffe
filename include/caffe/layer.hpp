@@ -18,7 +18,6 @@
 namespace boost { class mutex; }
 
 namespace caffe {
-
 /**
  * @brief An interface for the units of computation which can be composed into a
  *        Net.
@@ -41,13 +40,58 @@ class Layer {
     : layer_param_(param) {
       // Set phase and copy blobs (if there are any).
       phase_ = param.phase();
+	  //LOG(INFO)<<"Layer "<<param.name()<<" has "<< param.weights_compress_size() <<" params and has" <<blobs_.size()<<" blobs and "<<layer_param_.param_size()<<std::endl;
       if (layer_param_.blobs_size() > 0) {
         blobs_.resize(layer_param_.blobs_size());
         for (int i = 0; i < layer_param_.blobs_size(); ++i) {
           blobs_[i].reset(new Blob<Dtype>());
-          blobs_[i]->FromProto(layer_param_.blobs(i));
+		  //根据压缩参数载入权值：
+		  //如果存在压缩参数，则载入全精度权值，如果存在量化值则载入
+		  //如果不存在压缩参数，则优先寻找量化权值载入，如果不存在量化权值，则载入全精度权值
+          if(i<layer_param_.weights_compress_size()){
+			LOG(INFO)<<layer_param_.name()<<" Priority loading Full Precision weights to float weights."
+			<<" Maybe you want to retrain compress NN from exist one.";
+			blobs_[i]->FromProto(layer_param_.blobs(i),true,true);
+		  }else{
+			LOG(INFO)<<layer_param_.name()<<" Priority loading Quantized weights to float weights."
+			<<" Maybe you just want to train a no-compress NN or using a quantized weights for Float NN.";
+			blobs_[i]->FromProto(layer_param_.blobs(i),true,false);
+		  }
         }
       }
+	  if(param.activations_compress_param_size()>0){
+		  LOG(INFO)<<"activations_compress_param info ("<<param.activations_compress_param_size()<<")\n"
+					<<"delta="<<param.activations_compress_param(0).delta()
+					<<",alpha="<<param.activations_compress_param(0).alpha()
+					<<",fixedpos="<<param.activations_compress_param(0).fixedpos()
+					<<",maxbits="<<param.activations_compress_param(0).maxbits();
+	  }
+	  int max_weights_compress_num=(layer_param_.param_size()>=layer_param_.weights_compress_size()?layer_param_.param_size():layer_param_.weights_compress_size());
+	  if(max_weights_compress_num>0){
+		  //GC add weights_compress_
+		weights_compress_.resize(max_weights_compress_num,"");
+		for (int i = 0; i < max_weights_compress_num; ++i){
+			//GC add weights_compress_
+		  if(i<layer_param_.weights_compress_size()){
+			  weights_compress_[i]=layer_param_.weights_compress(i);
+			  LOG(INFO)<<"Layer "<<param.name()<<"> params "<<i<<": USE "<<weights_compress_[i]<<" compression weight"<<std::endl;
+		  }else{
+			LOG(INFO)<<"Layer "<<param.name()<<"> params "<<i<<": USE full precision weight"<<std::endl;
+			weights_compress_[i]="";
+		  }
+		}
+	  }
+	  //add activations_compress_
+	  int activations_compress_num=layer_param_.activations_compress_size();
+	  if(activations_compress_num>0){
+		  //GC add weights_compress_
+		activations_compress_.resize(activations_compress_num,"");
+		for (int i = 0; i < activations_compress_num; ++i){
+			//GC add weights_compress_
+			activations_compress_[i]=layer_param_.activations_compress(i);
+			LOG(INFO)<<"Layer "<<param.name()<<"> activetion "<<i<<": USE "<<activations_compress_[i]<<" compression activation"<<std::endl;
+		}
+	  }
     }
   virtual ~Layer() {}
 
@@ -157,11 +201,50 @@ class Layer {
   vector<shared_ptr<Blob<Dtype> > >& blobs() {
     return blobs_;
   }
-
+ // define the compress_param function for return the compress para in python caffe
+ vector<string>& weights_compress(){
+     for(int i=0;i<layer_param_.weights_compress_size();i++){
+         if (i>=weights_compress_.size())
+            weights_compress_.push_back(layer_param_.weights_compress(i));
+         else
+            weights_compress_[i]=layer_param_.weights_compress(i);
+     }
+     return weights_compress_;
+ }
+ vector<shared_ptr<CompressParameter> >& weights_compress_param(){
+     //must convert CompressParameter to vector for python
+     for(int i=0;i<layer_param_.weights_compress_param_size();i++){
+         if (i>=weights_compress_param_.size())
+            weights_compress_param_.push_back(shared_ptr<CompressParameter>(layer_param_.mutable_weights_compress_param(i)));
+         else
+            weights_compress_param_[i]->CopyFrom(layer_param_.weights_compress_param(i));
+     }
+     return weights_compress_param_;
+ }
+ vector<string>& activations_compress(){
+     for(int i=0;i<layer_param_.activations_compress_size();i++){
+         if (i>=activations_compress_.size())
+            activations_compress_.push_back(layer_param_.activations_compress(i));
+         else
+            activations_compress_[i]=layer_param_.activations_compress(i);
+     }
+     return activations_compress_;
+ }
+ vector<shared_ptr<CompressParameter> >& activations_compress_param(){
+     //vector<CompressParameter> activations_compress_param_;
+     for(int i=0;i<layer_param_.activations_compress_param_size();i++){
+         if (i>=activations_compress_param_.size())
+            activations_compress_param_.push_back(shared_ptr<CompressParameter>(layer_param_.mutable_activations_compress_param(i)));
+         else
+            activations_compress_param_[i]->CopyFrom(layer_param_.activations_compress_param(i));
+     }
+     return activations_compress_param_;
+ }
   /**
    * @brief Returns the layer parameter.
    */
   const LayerParameter& layer_param() const { return layer_param_; }
+  LayerParameter* mutable_layer_param() { return &layer_param_; }
 
   /**
    * @brief Writes the layer parameter to a protocol buffer
@@ -290,6 +373,338 @@ class Layer {
     }
     param_propagate_down_[param_id] = value;
   }
+	/*
+  压缩方法
+  */
+  void DataCompress(Blob<Dtype>* data, CompressParameter compress_param, string& compress_method, string compress_type="weights"){
+		//可以在此处计时，统计一下该算法的运行时
+		if(compress_method=="" || compress_type==""){
+			LOG(FATAL)<<layer_param_.name()<<": Have no compress method name and type!";
+		}
+		clock_t calctime=0;
+		if(false && phase_==TEST){
+			calctime=clock();
+		}
+		if(compress_method=="Ternary"){
+			data->ternarize_data(phase_,false,compress_param,compress_type);
+		}else if(compress_method=="Ternary_Quantize"){
+			data->ternarize_data(phase_,true,compress_param,compress_type);
+		}else if(compress_method=="Quantize"){
+			data->quantize_data(phase_,compress_param,compress_type);
+		}else if(compress_method=="Clip"){
+			data->clip_data(phase_,compress_param,compress_type);
+		}else if(compress_method=="ULQ"){
+			if(compress_type=="weights"){
+				data->ulq_weights(phase_,compress_param);
+			}else if(compress_type=="activations"){
+				data->ulq_activations(phase_,compress_param);
+			}else{
+				LOG(FATAL)<<layer_param_.name()<<": Unknown compress_type "<<compress_type;
+			}
+		}else{
+			LOG(FATAL)<<layer_param_.name()<<": Unknown compress method "<<compress_method;
+		}
+		if(false && phase_==TEST){
+			double costtime=double(clock()-calctime)/CLOCKS_PER_SEC*1000;
+			LOG(INFO)<<layer_param_.name()<<": "<<compress_method<<" "<<compress_type<<" cost tims is "<<costtime<<"ms\n";
+		}
+  }
+  //compress weights
+  void CompressLayerWeights(){
+	//LOG(INFO)<<"blobs_ size is "<<blobs_.size()<<" for Layer "<<layer_param_.name()<<std::endl;
+	//LOG(INFO)<<"weights Compress in "<<layer_param_.name()<<" Phase="<<phase_<<"("<<caffe::TRAIN<<","<<caffe::TEST<<")"
+	//<<" weights_compress_.size()="<<weights_compress_.size()
+	//<<" layer_param_weights_compress_size()"<<layer_param_.weights_compress_size()
+	//<<" blobs_.size="<<blobs_.size();
+	for(int i=0;i<blobs_.size();i++){
+		//LOG(INFO)<<" weights_compress["<<i<<"]="<<weights_compress_[i]<<std::endl;
+		bool has_compress_param=true;
+		if(i<layer_param_.weights_compress_size()){
+			//LOG(INFO)<<" weights_compress_.size()="<<weights_compress_.size()
+			//预处理：读取压缩参数（一般只会在第一次运行）
+			if(i>=layer_param_.weights_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
+				}
+				has_compress_param=false;
+				layer_param_.add_weights_compress_param();
+			}
+			//压缩
+			//LOG(INFO)<<layer_param_.name()<<" blobs["<<i<<"]";
+			DataCompress(&(*blobs_[i]),layer_param_.weights_compress_param(i),weights_compress_[i],"weights");
+			//后处理：更新压缩参数
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
+				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
+				layer_param_.mutable_weights_compress_param(i)->set_fixedpos(blobs_[i]->get_fixedpos());
+				layer_param_.mutable_weights_compress_param(i)->set_maxbits(blobs_[i]->get_maxbits());
+			}
+		}
+		/*
+		if(i<weights_compress_.size() &&weights_compress_[i]=="Ternary"){
+			//LOG(INFO)<<"weights_compress_param_size "<<layer_param_.weights_compress_param_size()<<" for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.weights_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
+				}
+				has_compress_param=false;
+				layer_param_.add_weights_compress_param();
+			}
+			//LOG(INFO)<<"start ternary compress\n";
+			//LOG(INFO)<<"weights_compress_param_size "<<layer_param_.weights_compress_param_size()<<" for Layer "<<layer_param_.name()<<std::endl;
+			blobs_[i]->ternarize_data(phase_,false,layer_param_.weights_compress_param(i),"weights");
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
+				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
+				layer_param_.mutable_weights_compress_param(i)->set_fixedpos(blobs_[i]->get_fixedpos());
+				layer_param_.mutable_weights_compress_param(i)->set_maxbits(blobs_[i]->get_maxbits());
+								//LOG(INFO)<<"Layer "<<layer_param_.name()<<" "<<layer_param_.weights_compress_param(i).delta()<<" | "<<
+					//layer_param_.weights_compress_param(i).alpha()<<" | "<<
+					//layer_param_.weights_compress_param(i).fixedpos()<<" | "<<
+					//layer_param_.weights_compress_param(i).maxbits()<<" | "<<std::endl;
+				//LOG(INFO)<<"end ternary compress\n";
+			}
+		}
+		if(i<weights_compress_.size() &&weights_compress_[i]=="Ternary_Quantize"){
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.weights_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
+				}
+				has_compress_param=false;
+				layer_param_.add_weights_compress_param();
+				
+			}
+			//LOG(INFO)<<"start ternary quantize compress\n";
+			blobs_[i]->ternarize_data(phase_,true,layer_param_.weights_compress_param(i),"weights");
+			if(phase_==TRAIN||!has_compress_param){
+				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
+				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
+				layer_param_.mutable_weights_compress_param(i)->set_fixedpos(blobs_[i]->get_fixedpos());
+				layer_param_.mutable_weights_compress_param(i)->set_maxbits(blobs_[i]->get_maxbits());
+								//LOG(INFO)<<"Layer "<<layer_param_.name()<<" "<<layer_param_.weights_compress_param(i).delta()<<" | "<<
+					//layer_param_.weights_compress_param(i).alpha()<<" | "<<
+					//layer_param_.weights_compress_param(i).fixedpos()<<" | "<<
+					//layer_param_.weights_compress_param(i).maxbits()<<" | "<<std::endl;
+				//LOG(INFO)<<"end ternary quantize compress\n";
+			}
+		}
+		if(i<weights_compress_.size() &&weights_compress_[i]=="Quantize"){
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.weights_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
+				}
+				has_compress_param=false;
+				layer_param_.add_weights_compress_param();
+				
+			}
+			blobs_[i]->quantize_data(phase_,layer_param_.weights_compress_param(i),"weights");
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
+				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
+				layer_param_.mutable_weights_compress_param(i)->set_fixedpos(blobs_[i]->get_fixedpos());
+				layer_param_.mutable_weights_compress_param(i)->set_maxbits(blobs_[i]->get_maxbits());
+			}
+		}
+		if(i<weights_compress_.size() &&weights_compress_[i]=="ULQ"){
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.weights_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
+				}
+				has_compress_param=false;
+				layer_param_.add_weights_compress_param();
+			}
+			//blobs_[i]->quantize_data(phase_,layer_param_.weights_compress_param(i),"weights");
+			blobs_[i]->ulq_weights(phase_,layer_param_.weights_compress_param(i));
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
+				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
+				layer_param_.mutable_weights_compress_param(i)->set_fixedpos(blobs_[i]->get_fixedpos());
+				layer_param_.mutable_weights_compress_param(i)->set_maxbits(blobs_[i]->get_maxbits());
+			}
+		}
+		*/
+	}
+  }
+  /*
+  切换计算权值为压缩权值
+  */
+  void ExchangeCompressWeights(){
+	for(int i=0;i<blobs_.size();i++){
+		/*
+		if(i<weights_compress_.size() && (weights_compress_[i]=="Ternary"
+		||weights_compress_[i]=="Ternary_Quantize")){
+			//LOG(INFO)<<"Exchange "<<weights_compress_[i]<<" weights_compress weights instead of full weights for Layer "<<layer_param_.name()<<std::endl;
+			blobs_[i]->exchange_data_ternary(true);
+		}*/
+		if(i<layer_param_.weights_compress_size() && 
+		(weights_compress_[i]=="Ternary"
+		||weights_compress_[i]=="Ternary_Quantize"
+		||weights_compress_[i]=="Quantize"
+		||weights_compress_[i]=="Clip"
+		||weights_compress_[i]=="ULQ")){
+			//LOG(INFO)<<"Exchange "<<weights_compress_[i]<<" weights_compress weights instead of full weights for Layer "<<layer_param_.name()<<std::endl;
+			blobs_[i]->exchange_data_quantize(true);
+		}
+	}
+  }
+  /*
+  切换计算权值为全精度权值
+  */
+  void ExchangeFullWeights(){
+	for(int i=0;i<blobs_.size();i++){
+		blobs_[i]->exchange_data_ternary(false);
+		blobs_[i]->exchange_data_quantize(false);
+	}
+  }
+  //压缩激活值
+  //note:激活值压缩必须是在前向传播之后，即获取了输出值，其用压缩值替换前向输出和反向计算梯度
+  void CompressLayerActivations(const vector<Blob<Dtype>*>& top){
+	 //LOG(INFO)<<"top size = "<<top.size()<<std::endl;
+	for(int i=0;i<top.size();i++){
+		bool has_compress_param=true;
+		if(i<layer_param_.activations_compress_size()){
+			//预处理：读取压缩参数（一般只会在第一次运行）
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<") "
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+				//layer_param_.add_activations_compress_param();
+			}
+			//激活值压缩
+			DataCompress(top[i],layer_param_.activations_compress_param(i),activations_compress_[i],"activations");
+			//后处理：更新压缩参数
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_activations_compress_param(i)->set_delta(top[i]->get_delta());
+				layer_param_.mutable_activations_compress_param(i)->set_alpha(top[i]->get_alpha());
+				layer_param_.mutable_activations_compress_param(i)->set_fixedpos(top[i]->get_fixedpos());
+				layer_param_.mutable_activations_compress_param(i)->set_maxbits(top[i]->get_maxbits());
+			}
+		}
+		/*
+		if(i<activations_compress_.size() &&activations_compress_[i]=="Ternary"){
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<") "
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+				//layer_param_.add_activations_compress_param();
+			}
+			top[i]->ternarize_data(phase_,false,layer_param_.activations_compress_param(i),"activations");
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_activations_compress_param(i)->set_delta(top[i]->get_delta());
+				layer_param_.mutable_activations_compress_param(i)->set_alpha(top[i]->get_alpha());
+				layer_param_.mutable_activations_compress_param(i)->set_fixedpos(top[i]->get_fixedpos());
+				layer_param_.mutable_activations_compress_param(i)->set_maxbits(top[i]->get_maxbits());
+			}
+		}
+		if(i<activations_compress_.size() &&activations_compress_[i]=="Ternary_Quantize"){
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<")"
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+				
+			}
+			top[i]->ternarize_data(phase_,true,layer_param_.activations_compress_param(i),"activations");
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_activations_compress_param(i)->set_delta(top[i]->get_delta());
+				layer_param_.mutable_activations_compress_param(i)->set_alpha(top[i]->get_alpha());
+				layer_param_.mutable_activations_compress_param(i)->set_fixedpos(top[i]->get_fixedpos());
+				layer_param_.mutable_activations_compress_param(i)->set_maxbits(top[i]->get_maxbits());
+			}
+		}
+		if(i<activations_compress_.size() &&activations_compress_[i]=="Quantize"){
+			//if did activations quantization, it do not need to keep params 
+			// except te smooth mean calc
+			//LOG(INFO)<<weights_compress_[i]<<" weights_compress for Layer "<<layer_param_.name()<<std::endl;
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<")"
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+		
+			}
+			top[i]->quantize_data(phase_,layer_param_.activations_compress_param(i),"activations");
+			if(phase_==TRAIN || !has_compress_param){
+				layer_param_.mutable_activations_compress_param(i)->set_delta(top[i]->get_delta());
+				layer_param_.mutable_activations_compress_param(i)->set_alpha(top[i]->get_alpha());
+				layer_param_.mutable_activations_compress_param(i)->set_fixedpos(top[i]->get_fixedpos());
+				layer_param_.mutable_activations_compress_param(i)->set_maxbits(top[i]->get_maxbits());
+			}
+		}
+		if(i<activations_compress_.size() &&activations_compress_[i]=="Clip"){
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<")"
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+			}
+			//Clip start
+			top[i]->clip_data(phase_,layer_param_.activations_compress_param(i),"activations");
+		}
+		if(i<activations_compress_.size() &&activations_compress_[i]=="ULQ"){
+			if(i>=layer_param_.activations_compress_param_size()){
+				if(phase_==TEST){
+					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<")"
+					<<" and set the default param for Test!";
+				}
+				has_compress_param=false;
+				layer_param_.add_activations_compress_param();
+			}
+			//ULQ start
+			top[i]->ulq_activations(phase_,*layer_param_.mutable_activations_compress_param(i));
+			//ULQ end
+		}
+		*/
+	}
+  }
+  /*
+  切换计算权值为压缩权值
+  */
+  void ExchangeCompressActivations(const vector<Blob<Dtype>*>& top){
+	for(int i=0;i<top.size();i++){
+		/*
+		if(i<activations_compress_.size() && (activations_compress_[i]=="Ternary"
+		||activations_compress_[i]=="Ternary_Quantize")){
+			//LOG(INFO)<<"Exchange "<<weights_compress_[i]<<" weights_compress weights instead of full weights for Layer "<<layer_param_.name()<<std::endl;
+			top[i]->exchange_data_ternary(true);
+		}*/
+		if(i<activations_compress_.size() && 
+		(activations_compress_[i]=="Ternary"
+		||activations_compress_[i]=="Ternary_Quantize"
+		||activations_compress_[i]=="Quantize"
+		||activations_compress_[i]=="Clip"
+		||activations_compress_[i]=="ULQ")){
+			//LOG(INFO)<<"Exchange "<<weights_compress_[i]<<" weights_compress weights instead of full weights for Layer "<<layer_param_.name()<<std::endl;
+			top[i]->exchange_data_quantize(true);
+		}
+	}
+  }
+  /*
+  切换计算权值为全精度权值
+  */
+  void ExchangeFullActivations(const vector<Blob<Dtype>*>& top){
+	for(int i=0;i<top.size();i++){
+		top[i]->exchange_data_ternary(false);
+		top[i]->exchange_data_quantize(false);
+	}
+  }
 
 
  protected:
@@ -299,6 +714,10 @@ class Layer {
   Phase phase_;
   /** The vector that stores the learnable parameters as a set of blobs. */
   vector<shared_ptr<Blob<Dtype> > > blobs_;
+  vector<string> weights_compress_;
+  vector<string> activations_compress_;
+vector<shared_ptr<CompressParameter> > weights_compress_param_;
+vector<shared_ptr<CompressParameter> > activations_compress_param_;
   /** Vector indicating whether to compute the diff of each param blob. */
   vector<bool> param_propagate_down_;
 
@@ -306,6 +725,9 @@ class Layer {
    *  the objective function. */
   vector<Dtype> loss_;
 
+  /*三值化参数，即delta和alpha*/
+
+ 
   /** @brief Using the CPU device, compute the layer output. */
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) = 0;
@@ -412,10 +834,16 @@ class Layer {
 template <typename Dtype>
 inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
+	//LOG(INFO)<<" Get into layer "<<layer_param_.name()<<"'s Forward!";
+	  //在Forward之前，对权值做三值化:GC
+	CompressLayerWeights();
+	  //切换使用三值权值代替全精度权值进行前向传播
+	ExchangeCompressWeights();
   Dtype loss = 0;
   Reshape(bottom, top);
   switch (Caffe::mode()) {
   case Caffe::CPU:
+  //GC
     Forward_cpu(bottom, top);
     for (int top_id = 0; top_id < top.size(); ++top_id) {
       if (!this->loss(top_id)) { continue; }
@@ -442,6 +870,45 @@ inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
+	//切换使用全精度权值
+	ExchangeFullWeights();
+	//对激活值做压缩
+	//LOG(INFO)<<"go into CompressLayerActivations"<<std::endl;
+	CompressLayerActivations(top);
+	//切换激活值为压缩表示
+	//ExchangeCompressActivations(top);
+	if(false && phase_==TEST){//测试该段耗时:耗时太严重，丢弃！
+		//获取当前激活层的最大值，只需要计算当前值处以alpha及初始的2^8次方就好了
+		//首先计算当前层权值的alpha是多少
+		if(layer_param_.weights_compress_param_size()>0){
+			clock_t calctime;
+			calctime=clock();
+			int fixedpos=layer_param_.weights_compress_param(0).fixedpos();
+			float alpha=layer_param_.weights_compress_param(0).alpha();
+			alpha=alpha*pow(2,fixedpos);
+			//float ascale=pow(2,8)*alpha;//假设输入特征缩放是2^-8.
+			static int topbit=0;
+			int ttopbit=topbit;
+			//计算top中绝对最大值和绝对最小值。
+			for (int i=0;i<top.size();i++){
+				//找到最大值
+				const Dtype* temp= top[i]->cpu_data();
+				for(int j=0;j<top[i]->count();j++){
+					const Dtype a=temp[j]>0?temp[j]:-temp[j];
+					int bitwidth=1+ceil(log2(a/alpha));
+					if(bitwidth>ttopbit){
+						ttopbit=bitwidth;
+					}
+				}
+			}
+			if(ttopbit>topbit){
+				topbit=ttopbit;
+				LOG(INFO)<<layer_param_.name()<<" Top max bit is ("<<topbit<<"bit or "<<topbit+8<<"bit."<<std::endl;
+			}
+			double costtime=double(clock()-calctime)/CLOCKS_PER_SEC*1000;
+			LOG(INFO)<<"count top max bits cost tims is "<<costtime<<"ms\n";
+		}
+	}
   return loss;
 }
 
@@ -449,6 +916,11 @@ template <typename Dtype>
 inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
+	//切换使用三值权值代替全精度权值进行反向传播
+	ExchangeCompressWeights();
+	//切换激活值为压缩表示
+	//ExchangeCompressActivations(top);
+	
   switch (Caffe::mode()) {
   case Caffe::CPU:
     Backward_cpu(top, propagate_down, bottom);
@@ -459,6 +931,11 @@ inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
+    //切换使用全精度权值进行权值更新
+	ExchangeFullWeights();
+	  //切换使用全精度激活值进行权值更新：事实上并没有必要，
+	  //因为已经使用了压缩top计算反向梯度，但是为了后续批次能够依次以全精度->压缩值的流程，可以考虑打开
+	//ExchangeFullActivations(top);
 }
 
 // Serialize LayerParameter to protocol buffer
@@ -467,9 +944,19 @@ void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {
   param->Clear();
   param->CopyFrom(layer_param_);
   param->clear_blobs();
+  //如果需要三值化，则对最新的参数三值化，然后写入文本
+  CompressLayerWeights();
+  //如果有权值需要三值化，则只存储三值权值
+  //ExchangeCompressWeights();
   for (int i = 0; i < blobs_.size(); ++i) {
-    blobs_[i]->ToProto(param->add_blobs(), write_diff);
+	if(i<layer_param_.weights_compress_size()){
+		blobs_[i]->ToProto(param->add_blobs(), write_diff,true);
+	}else{
+		blobs_[i]->ToProto(param->add_blobs(), write_diff,false);
+	}
   }
+  //切换使用全精度权值进行训练
+  ExchangeFullWeights();
 }
 
 }  // namespace caffe

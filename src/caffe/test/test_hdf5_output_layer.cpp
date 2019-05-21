@@ -1,4 +1,3 @@
-#ifdef USE_HDF5
 #include <string>
 #include <vector>
 
@@ -121,4 +120,3 @@ TYPED_TEST(HDF5OutputLayerTest, TestForward) {
 }
 
 }  // namespace caffe
-#endif  // USE_HDF5

@@ -1,4 +1,3 @@
-#ifdef USE_HDF5
 /*
 TODO:
 - load file in a separate thread ("prefetch")
@@ -185,4 +184,3 @@ INSTANTIATE_CLASS(HDF5DataLayer);
 REGISTER_LAYER_CLASS(HDF5Data);
 
 }  // namespace caffe
-#endif  // USE_HDF5

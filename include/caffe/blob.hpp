@@ -24,7 +24,14 @@ template <typename Dtype>
 class Blob {
  public:
   Blob()
-       : data_(), diff_(), count_(0), capacity_(0) {}
+       : data_(), diff_(), count_(0), capacity_(0) {
+		   EXCHANGE_DATA_TERNARY_=false;
+		   	delta_=Dtype(0);
+			alpha_=Dtype(0);
+			EXCHANGE_DATA_QUANTIZE_=false;
+			fixedpos_=0;
+			maxbits_=0;
+	   }
 
   /// @brief Deprecated; use <code>Blob(const vector<int>& shape)</code>.
   explicit Blob(const int num, const int channels, const int height,
@@ -210,6 +217,16 @@ class Blob {
     CHECK(data_);
     return data_;
   }
+  
+  //ternary and quantize
+  inline const shared_ptr<SyncedMemory>& ternary() const {
+    //CHECK(ternary_);
+	return ternary_;
+  }
+  inline const shared_ptr<SyncedMemory>& quantize() const {
+    //CHECK(quantize_);
+    return quantize_;
+  }
 
   inline const shared_ptr<SyncedMemory>& diff() const {
     CHECK(diff_);
@@ -227,9 +244,27 @@ class Blob {
   Dtype* mutable_gpu_data();
   Dtype* mutable_cpu_diff();
   Dtype* mutable_gpu_diff();
+  //18-8-30 GC：ternary
+  const Dtype* cpu_ternary() const;
+  const Dtype* gpu_ternary() const;
+  void set_cpu_ternary(Dtype* data);
+  void set_gpu_ternary(Dtype* data);
+  Dtype* mutable_cpu_ternary();
+  Dtype* mutable_gpu_ternary();
+  //quantize
+  const Dtype* cpu_quantize() const;
+  const Dtype* gpu_quantize() const;
+  void set_cpu_quantize(Dtype* data);
+  void set_gpu_quantize(Dtype* data);
+  Dtype* mutable_cpu_quantize();
+  Dtype* mutable_gpu_quantize();
+  //设置是否用ternary替换data进行计算，会改变私有变量EXCHANGE_DATA_TERNARY,导致在获取cpu_data()函数返回为ternary_;
+  void exchange_data_ternary(bool flag=false);
+  void exchange_data_quantize(bool flag=false);
+  
   void Update();
-  void FromProto(const BlobProto& proto, bool reshape = true);
-  void ToProto(BlobProto* proto, bool write_diff = false) const;
+  void FromProto(const BlobProto& proto, bool reshape = true, bool FPfirst=true);
+  void ToProto(BlobProto* proto, bool write_diff = false, bool save_quantize=true) const;
 
   /// @brief Compute the sum of absolute values (L1 norm) of the data.
   Dtype asum_data() const;
@@ -239,7 +274,31 @@ class Blob {
   Dtype sumsq_data() const;
   /// @brief Compute the sum of squares (L2 norm squared) of the diff.
   Dtype sumsq_diff() const;
-
+  
+  ///set_alphe and delta for Ternarize
+  bool set_delta();
+  bool set_alpha(const Dtype alpha);
+  float get_alpha() const;
+  float get_delta() const;
+  ///Ternarize data
+  //@quantize_alpha：是否量化alpha
+  //@maxbits：量化alpha的bit数
+  //@compress_type:指定压缩的数据是weights or activations：对activations需要每次都做操作，而对weights只需要在训练阶段做
+  void ternarize_data(Phase phase = TRAIN,bool quantize_alpha=false,CompressParameter compress_param=CompressParameter(),string compress_type="weights");
+  ///Quantize data @ return fixed position
+  //bool set_fixedpos(const int fixedpos);
+  bool set_maxbits(const int mabits);
+  int get_fixedpos() const;
+  int get_maxbits() const;
+  void quantize_data(Phase phase = TRAIN,CompressParameter compress_param=CompressParameter(),string compress_type="weights");
+  //compress_param:the weights compress params
+  void clip_data(Phase phase = TRAIN,CompressParameter compress_param=CompressParameter(),string compress_type="weights");
+  //ulq
+  void ulq_weights(Phase phase = TRAIN,CompressParameter compress_param=CompressParameter());
+  //对于激活值的量化，想要设置一个滑动平均系数，并且保留估计的整体样本的均值和标准差，在测试的时候直接应用
+  //alpha记录均值，delta记录标准差，lambda为平均滑动系数
+  void ulq_activations(Phase phase,CompressParameter compress_param,float lambda=0.99);
+  
   /// @brief Scale the blob data by a constant factor.
   void scale_data(Dtype scale_factor);
   /// @brief Scale the blob diff by a constant factor.
@@ -270,6 +329,16 @@ class Blob {
   shared_ptr<SyncedMemory> data_;
   shared_ptr<SyncedMemory> diff_;
   shared_ptr<SyncedMemory> shape_data_;
+  // add at 2018-8-30 by GC
+  shared_ptr<SyncedMemory> ternary_; 
+  Dtype delta_;
+  Dtype alpha_;
+  bool EXCHANGE_DATA_TERNARY_;
+  shared_ptr<SyncedMemory> quantize_;
+  int fixedpos_;
+  int maxbits_;
+  bool EXCHANGE_DATA_QUANTIZE_;
+  //lambda table
   vector<int> shape_;
   int count_;
   int capacity_;

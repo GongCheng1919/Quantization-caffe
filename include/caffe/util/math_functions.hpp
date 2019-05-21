@@ -108,6 +108,10 @@ Dtype caffe_cpu_strided_dot(const int n, const Dtype* x, const int incx,
 template <typename Dtype>
 Dtype caffe_cpu_asum(const int n, const Dtype* x);
 
+// add at 2018-9-6 quantization function
+template<typename Dtype>
+void caffe_cpu_quantizea(const int count, const Dtype* X, Dtype* Y, int* fixed_point, int max_bits = 8, bool calc_fixed_point=true);
+
 // the branchless, type-safe version from
 // http://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
 template<typename Dtype>
@@ -144,6 +148,10 @@ DEFINE_CAFFE_CPU_UNARY_FUNC(fabs, y[i] = std::fabs(x[i]))
 
 template <typename Dtype>
 void caffe_cpu_scale(const int n, const Dtype alpha, const Dtype *x, Dtype* y);
+
+// added @ 2016-3-21
+template <typename Dtype>
+void caffe_cpu_ternary(const int n, const Dtype delta, const Dtype* X, Dtype* Y, Dtype* alpha);
 
 #ifndef CPU_ONLY  // GPU
 
@@ -244,6 +252,9 @@ void caffe_gpu_dot(const int n, const Dtype* x, const Dtype* y, Dtype* out);
 
 template <typename Dtype>
 void caffe_gpu_asum(const int n, const Dtype* x, Dtype* y);
+template <typename Dtype>
+void caffe_gpu_sum(const int n, const Dtype* x, Dtype* y);
+
 
 template<typename Dtype>
 void caffe_gpu_sign(const int n, const Dtype* x, Dtype* y);
@@ -256,6 +267,38 @@ void caffe_gpu_fabs(const int n, const Dtype* x, Dtype* y);
 
 template <typename Dtype>
 void caffe_gpu_scale(const int n, const Dtype alpha, const Dtype *x, Dtype* y);
+
+// added @ 2016-3-21
+template <typename Dtype>
+void caffe_gpu_ternary(const int n, const Dtype delta, const Dtype* X, Dtype* Y, Dtype* alpha);
+//获取cuda内存上某个位置的值
+template<typename Dtype>
+void caffe_gpu_getcudavalue(const Dtype* X,const int index, Dtype* result);
+// add at 2018-9-6 quantization function
+template<typename Dtype>
+void caffe_gpu_quantizea(const int count, const Dtype* X, Dtype* Y, int* fixed_point, int max_bits = 8, bool calc_fixed_point=true);
+// add at 2018-11-24 for activation direct clip
+template<typename Dtype>
+void caffe_cpu_quantizeb(const int count, Dtype* X, int max_bits = 8);
+template<typename Dtype>
+void caffe_gpu_quantizeb(const int count, Dtype* X, int max_bits = 8);
+//add at 2018-11-25 for activation scale clip
+template<typename Dtype>
+void caffe_cpu_quantizec(const int count, const Dtype* X, Dtype*Y, Dtype* alpha, int max_bits = 8);
+template<typename Dtype>
+void caffe_gpu_quantizec(const int count, const Dtype* X, Dtype*Y, Dtype* alpha,int max_bits = 8);
+//add at 2018-11-25 for ULQ
+template<typename Dtype>
+void caffe_cpu_ulq(const int count, const Dtype mean_old, const Dtype sigma_old,const Dtype* X, Dtype* Y, int max_bits = 8,bool restore=true);
+template<typename Dtype>
+void caffe_gpu_ulq(const int count, const Dtype mean_old, const Dtype sigma_old,const Dtype* X, Dtype* Y, int max_bits = 8,bool restore=true);
+
+//calc mean and std of data
+template<typename Dtype>
+void caffe_cpu_meanstd(const int count, const Dtype* X, Dtype& mean, Dtype& stds);
+
+template<typename Dtype>
+void caffe_gpu_meanstd(const int count, const Dtype* X, Dtype& mean, Dtype& stds);
 
 #define DEFINE_AND_INSTANTIATE_GPU_UNARY_FUNC(name, operation) \
 template<typename Dtype> \

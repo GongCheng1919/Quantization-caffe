@@ -78,7 +78,7 @@ template <typename Dtype>
 void Solver<Dtype>::InitTrainNet() {
   const int num_train_nets = param_.has_net() + param_.has_net_param() +
       param_.has_train_net() + param_.has_train_net_param();
-  const string field_names = "net, net_param, train_net, train_net_param";
+  const string& field_names = "net, net_param, train_net, train_net_param";
   CHECK_GE(num_train_nets, 1) << "SolverParameter must specify a train net "
       << "using one of these fields: " << field_names;
   CHECK_LE(num_train_nets, 1) << "SolverParameter must not contain more than "
@@ -330,6 +330,61 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     TestAll();
   }
   LOG(INFO) << "Optimization Done.";
+  //GC show all test data
+  Display_list();
+}
+template <typename Dtype>
+void Solver<Dtype>::Display_list() {
+  if(accuracy_list_.size()>0){
+	  std::cout << "\n--------- accuracy list ------\n" << std::endl;
+	  //std::cout << "" << accuracy_list_[0] << std::endl;
+	  float best=0;
+	  int index=0;
+	  for(int i=accuracy_list_.size()-1; i>=0; i--){
+		std::cout << accuracy_list_[i] << " ";
+		if(accuracy_list_[i]>best){
+			best=accuracy_list_[i];
+			index=i;
+		}
+		if((accuracy_list_.size()-i)%10 == 0&&i!=0){
+			std::cout << std::endl;
+		}
+	  }
+	  std::cout <<"\nBest accuracy is: ["<< best << "] at index of ["<<index<<"]\n";
+  }
+  if(loss_list_.size()>0){
+	  std::cout << "\n--------- loss list ------\n" << std::endl;
+	  float best=loss_list_[0];
+	  int index=0;
+	  for(int i=loss_list_.size()-1; i>=0; i--){
+		std::cout << loss_list_[i] << " ";
+		if(loss_list_[i]<best){
+			best=loss_list_[i];
+			index=i;
+		}
+		if((loss_list_.size()-i)%10 == 0&&i!=0){
+			std::cout << std::endl;
+		}
+	  }
+	  std::cout <<"\nBest loss is: ["<< best << "] at index of ["<<index<<"]\n";
+  }
+  if(accuracy_5_list_.size()>0){
+	  std::cout << "\n------ top 5 accuracy list ------\n" << std::endl;
+	  float best=0;
+	  int index=0;
+	  for(int i=accuracy_5_list_.size()-1; i>=0; i--){
+		std::cout << accuracy_5_list_[i] << " ";
+		if(accuracy_5_list_[i]>best){
+			best=accuracy_5_list_[i];
+			index=i;
+		}
+		if((accuracy_5_list_.size()-i)%10 == 0&&i!=0){
+			std::cout << std::endl;
+		}
+	  }
+	  std::cout <<"\nBest top 5 accuracy is: ["<< best << "] at index of ["<<index<<"]\n";
+  }
+  std::cout << "\n----------- end -------------\n" << std::endl;
 }
 
 template <typename Dtype>
@@ -413,6 +468,16 @@ void Solver<Dtype>::Test(const int test_net_id) {
     }
     LOG(INFO) << "    Test net output #" << i << ": " << output_name << " = "
               << mean_score << loss_msg_stream.str();
+	// add test data to list
+	if(output_name.compare("accuracy")==0){
+		accuracy_list_.push_back((float) mean_score);
+	}
+	if(output_name.compare("loss")==0){
+		loss_list_.push_back((float) mean_score);
+	}
+	if(output_name.compare("accuracy_5")==0){
+		accuracy_5_list_.push_back((float) mean_score);
+	}
   }
 }
 
@@ -447,13 +512,13 @@ void Solver<Dtype>::CheckSnapshotWritePermissions() {
     } else {
       LOG(FATAL) << "Cannot write to snapshot prefix '"
           << param_.snapshot_prefix() << "'.  Make sure "
-          << "that the directory exists and is writable.";
+          << "that the directory exists and is writeable.";
     }
   }
 }
 
 template <typename Dtype>
-string Solver<Dtype>::SnapshotFilename(const string& extension) {
+string Solver<Dtype>::SnapshotFilename(const string extension) {
   return param_.snapshot_prefix() + "_iter_" + caffe::format_int(iter_)
     + extension;
 }

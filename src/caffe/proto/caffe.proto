@@ -8,12 +8,22 @@ message BlobShape {
 }
 
 message BlobProto {
+
   optional BlobShape shape = 7;
   repeated float data = 5 [packed = true];
   repeated float diff = 6 [packed = true];
   repeated double double_data = 8 [packed = true];
   repeated double double_diff = 9 [packed = true];
-
+  //parameter for ternary
+  repeated float ternary = 10 [packed = true];
+  repeated double double_ternary = 11 [packed = true];
+  optional float delta = 12 [default = 1];
+  optional float alpha = 13 [default = 1];
+  //parameter for quantize:fixedpos、maxbits、quantize
+  repeated float quantize = 14 [packed = true];
+  repeated double double_quantize = 15 [packed = true];
+  optional float fixedpos = 16 [default = 0];
+  optional float maxbits = 17 [default = 8];
   // 4D dimensions -- deprecated.  Use "shape" instead.
   optional int32 num = 1 [default = 0];
   optional int32 channels = 2 [default = 0];
@@ -187,7 +197,7 @@ message SolverParameter {
 
   optional int32 snapshot = 14 [default = 0]; // The snapshot interval
   // The prefix for the snapshot.
-  // If not set then is replaced by prototxt file path without extension.
+  // If not set then is replaced by prototxt file path without extention.
   // If is set to directory then is augmented by prototxt file name
   // without extention.
   optional string snapshot_prefix = 15;
@@ -248,8 +258,8 @@ message SolverParameter {
 
   // Path to caffemodel file(s) with pretrained weights to initialize finetuning.
   // Tha same as command line --weights parameter for caffe train command.
-  // If command line --weights parameter is specified, it has higher priority
-  // and overwrites this one(s).
+  // If command line --weights parameter if specified, it has higher priority
+  // and owerwrites this one(s).
   // If --snapshot command line parameter is specified, this one(s) are ignored.
   // If several model files are expected, they can be listed in a one 
   // weights parameter separated by ',' (like in a command string) or
@@ -319,10 +329,17 @@ message ParamSpec {
   optional float decay_mult = 4 [default = 1.0];
 }
 
+// param for compress 
+message CompressParameter{
+	optional float delta=1 [default = 0];
+	optional float alpha=2 [default = 0];
+	optional int32 fixedpos=3 [default = 0];
+	optional int32 maxbits=4 [default = 8];
+}
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 149 (last added: clip_param)
+// LayerParameter next available layer-specific ID: 153 (last added: activations_compress_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -343,6 +360,12 @@ message LayerParameter {
 
   // The blobs containing the numeric parameters of the layer.
   repeated BlobProto blobs = 7;
+  // The compression methods for each blobs, so the dim is same as blobs, and no means full 
+  // param can be set as '' 'Ternary' 'Quantize'
+  repeated string weights_compress = 149;
+  repeated string activations_compress = 150;
+  repeated CompressParameter weights_compress_param=151;
+  repeated CompressParameter activations_compress_param=152;
 
   // Specifies whether to backpropagate to each bottom. If unspecified,
   // Caffe will automatically infer whether each input needs backpropagation
