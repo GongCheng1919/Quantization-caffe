@@ -39,7 +39,8 @@ Clip:              Directly limit data range, for an input data, the output can 
                    usually dst_range=2^k. k can be set by configure the weights_compress_param.maxbits.
                    
 ULQ:               implementation of $\mu$L2Q quantization method, compressing the corresponding 
-                   layer weights/biases into an integer with the limited bit width and the bit width can be set by configuring the weights_compress_param.maxbits. More details can be found 
+                   layer weights/biases into an integer with the limited bit width and the bit width 
+                   can be set by configuring the weights_compress_param.maxbits. More details can be found 
                    in our paper "$\mu$L2Q: An Ultra-Low Loss Quantization Method for DNN Compression"
                    (reference 2).
 ``` 
