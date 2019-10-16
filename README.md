@@ -225,6 +225,7 @@ ax1.set_ylabel('train loss')
 ax2.set_ylabel('test accuracy')
 ax2.set_title('Test Accuracy: {:.2f}'.format(test_acc[-1]))
 ```
+![training_curve](output_5_2.png)
 
 ### Get and restore weights and activations for further processing
 ```python
@@ -254,6 +255,7 @@ print(data2.reshape(-1)[:5])
 print(data3.reshape(-1)[:5])
 imshow(data3[:,0].reshape(8, 8, 24, 24).transpose(0, 2, 1, 3).reshape(8*24, 8*24), cmap='gray')
 ```
+![out_img](output_6_1.png)
 
 Please cite our works in your publications if it helps your research:
 ```
