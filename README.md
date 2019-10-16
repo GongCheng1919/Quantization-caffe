@@ -4,7 +4,7 @@
     git clone https://github.com/GongCheng1919/Quantization-caffe.git
     cd Quantization-caffe
 ```
-- Merge: If you want to merge the [latest Caffe](https://github.com/BVLC/caffe) into the this branch, see the following commands:
+- Merge: If you want to merge the [latest Caffe](https://github.com/BVLC/caffe) into this branch, see the following commands:
 ```
     git remote add caffe https://github.com/BVLC/caffe.git
     git fetch caffe
@@ -28,39 +28,38 @@ Once the installation is complete, you can add the specified compression paramet
 The optional parameters of `weights_compress` are:
 ```
 Ternary_Quantize:  Compressing the corresponding layer weights/biases into three values {-1,0,1} 
-                   and an additional quantized scaler alpha, which is a integer value with the 
-                   limited bit width and the bit width can be set by configure the 
+                   and an additional quantized scaler alpha, which is an integer value with the 
+                   limited bit width and the bit width can be set by configuring the 
                    weights_compress_param.maxbits. More details can be found in our paper "T-DLA: 
                    An Open-source Deep Learning Accelerator for Ternarized DNN Models on Embedded 
                    FPGA" (reference 1).
-				   
-Clip:              Directly limit data range, for a input data,the output can be computed by this 
+                   
+Clip:              Directly limit data range, for an input data, the output can be computed by this 
                    formula: output=(input*dst_range)/src_range). Here src_range=max(abs(input)) and   
                    usually dst_range=2^k. k can be set by configure the weights_compress_param.maxbits.
-				   
+                   
 ULQ:               implementation of $\mu$L2Q quantization method, compressing the corresponding 
-                   layer weights/biases into integer with the limited bit width and the bit width
-                   can be set by configure the weights_compress_param.maxbits. More details can be found 
+                   layer weights/biases into an integer with the limited bit width and the bit width can be set by configuring the weights_compress_param.maxbits. More details can be found 
                    in our paper "$\mu$L2Q: An Ultra-Low Loss Quantization Method for DNN Compression"
                    (reference 2).
 ``` 
 Attributes of `weights_compress_param` include:
 ```
-mxbits:            Integer. Must be specified manually. Limiting the bit width of quantized data and requiring 
+mxbits:            Integer. It must be specified manually. Limiting the bit width of quantized data and requiring 
                    manual configuration, default is 8 (bit width).
    
-fixedpos:          Integer. Can't be specified manually. It will be generated automatically in training.
+fixedpos:          Integer. It can't be specified manually. It will be generated automatically in training.
                    For Ternary_Quantize: After quantizing decimal to integer by shift (output=round(input/2^fixedpos)), 
                                          the number of steps of decimal point movement is recorded in fixedpos.
 
-alpha:             Real (Float). Can't be specified manually. It will be generated automatically in training.
-                   For Ternary_Quantize: referring to alpha in a paper 1 (reference 1).
+alpha:             Real (Float). It can't be specified manually. It will be generated automatically in training.
+                   For Ternary_Quantize: referring to alpha in paper 1 (reference 1).
                    For Clip: alpha=src_range/dst_range. Here src_range=max(abs(input)) and usually dst_range=2^k.   
                    k can be set by configure the weights_compress_param.maxbits.
-                   For ULQ: referring to reciprocal of alpha in a paper 2 (reference 2).
+                   For ULQ: referring to reciprocal of alpha in paper 2 (reference 2).
 
-delta:             Real (Float). Can't be specified manually. It will be generated automatically in training.
-                   For Ternary_Quantize: referring to delta in a paper 1 (reference 1).
+delta:             Real (Float). It can't be specified manually. It will be generated automatically in training.
+                   For Ternary_Quantize: referring to the delta in paper 1 (reference 1).
                    For ULQ: referring to beta in a paper 2 (reference 2).
 ```
 ### 2. Obtaining the quantized weights and compression parameters of quantized model
@@ -94,7 +93,7 @@ for layer in net.layers:
         print '\t activations_compress_param[%d]:'%i,"alpha=%f, delta=%f, fixedpos=%d, maxbits=%d"%(param.alpha,param.delta,param.fixedpos,param.maxbits)
 
 ```
-Note: for ease of calculation, all parameters of quantized model have been scaled. If you want to get parameters 
+Note: for ease of calculation, all parameters of the quantized model have been scaled. If you want to get parameters 
 of the integer (such as alpha), see the following steps
 
 # Demo
