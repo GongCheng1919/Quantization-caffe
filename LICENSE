@@ -1,44 +1,33 @@
-COPYRIGHT
-
-All contributions by the University of California:
-Copyright (c) 2014-2017 The Regents of the University of California (Regents)
+Copyright (c) <2019>
+<Nankai University, Tianjin, China>
+<Advanced Digital Sciences Center, Singapore>
+<University of Illinois at Urbana-Champaign>
 All rights reserved.
 
-All other contributions:
-Copyright (c) 2014-2017, the respective contributors
-All rights reserved.
 
-Caffe uses a shared copyright model: each contributor holds copyright over
-their contributions to Caffe. The project versioning records all such
-contribution and copyright details. If a contributor wants to further mark
-their specific copyright on a particular contribution, they should indicate
-their copyright solely in the commit message of the change when it is
-committed.
+General terms and conditions for use of the uL2Q design. The design 
+comprising "uL2Q" and the documentation provided with them are 
+copyright Cheng Gong, Ye Lu, Tao Li, Yao Chen, Deming Chen, 
+the Nankai University, Tianjin, China, 
+the Advanced Digital Sciences Center, Singapore 
+and the University of Illinois at Urbana-Champaign.
 
-LICENSE
+Only non-commercial, not-for-profit use of this design is permitted. No part 
+of this software design may be incorporated into a commercial product without the 
+written consent of the authors.  Similarly, use of 
+this software to assist in the development of new commercial applications is 
+prohibited, unless the written consent of the authors is obtained.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met: 
+This software is provided "as is" with no warranties or guarantees of support. 
+All users of the software design must take the copy from this site. You may modify or 
+use the source code for other non-commercial, not-for-profit research endeavours,
+provided that all copyright attribution on the source code is retained, and the
+original or modified source code is not redistributed, in whole or in part, or
+included in or with any commercial product, except by written agreement with
+the authors, and full and complete attribution for use of the code is given in
+any resulting publications. Subject to these conditions, the software is
+provided free of charge to all interested parties.
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution. 
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-CONTRIBUTION AGREEMENT
-
-By contributing to the BVLC/caffe repository through pull-request, comment,
-or otherwise, the contributor releases their content to the
-license and copyright terms herein.
+When referencing this particular open-source software in a publication, please 
+cite the following publication:
+Cheng Gong, Ye Lu, Tao Li, Xiaofan Zhang, Cong Hao, Deming Chen and Yao Chen, "uL2Q: An Ultra-low Loss Quantization Method for DNN", The 2019 International Joint Conference on Neural Networks (IJCNN).
