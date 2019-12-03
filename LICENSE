@@ -37,4 +37,6 @@ cite the following publication:
 Cheng Gong, Ye Lu, Tao Li, Xiaofan Zhang, Cong Hao, Deming Chen and Yao Chen, 
 "uL2Q: An Ultra-low Loss Quantization Method for DNN", The 2019 International 
 Joint Conference on Neural Networks (IJCNN).
-
+Yao Chen, Kai Zhang, Cheng Gong, Cong Hao, Xiaofan Zhang, Tao Li and Deming Chen,
+"T-DLA: An Open-source Deep Learning Accelerator for Ternarized DNN Models on Embedded FPGA",
+IEEE Computer Society Annual Symposium on VLSI 2019 (ISVLSI)
