@@ -5,21 +5,25 @@ Copyright (c) <2019>
 All rights reserved.
 
 
-General terms and conditions for use of the uL2Q software package. The open-source package comprising "uL2Q" software and the provided documentation is copyright protected. The copyright is owned by Cheng Gong, Ye Lu, Tao Li, Yao Chen, Deming Chen, Nankai University, China, Advanced Digital Sciences Center, Singapore, and University of Illinois at Urbana-Champaign, USA.
+General terms and conditions for use of the uL2Q software package. The open-source 
+package comprising "uL2Q" software and the provided documentation is copyright protected. 
+The copyright is owned by Cheng Gong, Ye Lu, Tao Li, Yao Chen, Deming Chen, Nankai 
+University, China, Advanced Digital Sciences Center, Singapore, and University of 
+Illinois at Urbana-Champaign, USA.
 
-General terms and conditions for use of the T-DLA design. The design 
+General terms and conditions for use of the T-DLA software. The software 
 comprising "T-DLA" and the documentation provided with them are 
 copyright Yao Chen, Deming Chen, the Advanced Digital Sciences Center, Singapore 
 and the University of Illinois at Urbana-Champaign.
 
-Only non-commercial, not-for-profit use of this design is permitted. No part 
-of this software design may be incorporated into a commercial product without the 
+Only non-commercial, not-for-profit use of this software is permitted. No part 
+of this software may be incorporated into a commercial product without the 
 written consent of the authors.  Similarly, use of 
 this software to assist in the development of new commercial applications is 
 prohibited, unless the written consent of the authors is obtained.
 
 This software is provided "as is" with no warranties or guarantees of support. 
-All users of the software design must take the copy from this site. You may modify or 
+All users of the software must take the copy from this site. You may modify or 
 use the source code for other non-commercial, not-for-profit research endeavours,
 provided that all copyright attribution on the source code is retained, and the
 original or modified source code is not redistributed, in whole or in part, or
@@ -30,4 +34,7 @@ provided free of charge to all interested parties.
 
 When referencing this particular open-source software in a publication, please 
 cite the following publication:
-Cheng Gong, Ye Lu, Tao Li, Xiaofan Zhang, Cong Hao, Deming Chen and Yao Chen, "uL2Q: An Ultra-low Loss Quantization Method for DNN", The 2019 International Joint Conference on Neural Networks (IJCNN).
+Cheng Gong, Ye Lu, Tao Li, Xiaofan Zhang, Cong Hao, Deming Chen and Yao Chen, 
+"uL2Q: An Ultra-low Loss Quantization Method for DNN", The 2019 International 
+Joint Conference on Neural Networks (IJCNN).
+
