@@ -1,3 +1,6 @@
+Quantization-caffe: This open-source package introduces an ultra-low loss quantization (μL2Q) method that provides DNN quantization schemes based on comprehensive quantitative data analysis together with a unique ternary quantization mechanism that use an additional quantizated scaler within limited bitwidth. 
+Our method can deliver consistent accuracy improvement compared to the state-of-the-art quantization solutions with the same compression ratio.
+
 # Installation
 - Clone: clone our_branch to local:
 ```shell
@@ -38,7 +41,10 @@ Clip:              Directly limit data range, for an input data, the output can 
                    formula: output=(input*dst_range)/src_range). Here src_range=max(abs(input)) and   
                    usually dst_range=2^k. k can be set by configure the weights_compress_param.maxbits.
                    
-ULQ:               implementation of $\mu$L2Q quantization method, compressing the corresponding 
+ULQ:               Duilds the transformation of the original data to a data space with standard normal 
+                   distribution, and then finds the optimal parameters to minimize the loss of the 
+                   quantization of a target bitwidth.
+                   The implementation of $\mu$L2Q quantization method compresses the corresponding 
                    layer weights/biases into an integer with the limited bit width and the bit width 
                    can be set by configuring the weights_compress_param.maxbits. More details can be found 
                    in our paper "$\mu$L2Q: An Ultra-Low Loss Quantization Method for DNN Compression"
