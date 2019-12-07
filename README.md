@@ -305,7 +305,7 @@ imshow(data3[:,0].reshape(8, 8, 24, 24).transpose(0, 2, 1, 3).reshape(8*24, 8*24
 
 
 
-![out_img](output_5_2.png)
+![out_img](output_6_1.png)
 
 Please cite our works in your publications if it helps your research:
 ```
