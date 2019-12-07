@@ -40,18 +40,22 @@ def lenet(lmdb, batch_size):
     n.data, n.label = L.Data(batch_size=batch_size, backend=P.Data.LMDB, source=lmdb,
                              transform_param=dict(scale=1./255), ntop=2)
     n.conv1 = L.Convolution(n.data, kernel_size=5, num_output=20, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"], #compress methods for kernel and bias
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}], #compress param for kernel and bias
+                           weights_compress=["ULQ","ULQ"], #compress methods for kernel and bias
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}], #compress param for kernel and bias
                            activations_compress="Clip",#compress method for activations
                            activations_compress_param={"maxbits":8})#compress param for activations
     n.pool1 = L.Pooling(n.conv1, kernel_size=2, stride=2, pool=P.Pooling.MAX)
     n.conv2 = L.Convolution(n.pool1, kernel_size=5, num_output=50, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"],
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}],
+                           weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
                            activations_compress="Clip",
                            activations_compress_param={"maxbits":8})
     n.pool2 = L.Pooling(n.conv2, kernel_size=2, stride=2, pool=P.Pooling.MAX)
-    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'))
+    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'),
+                            weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
+                           activations_compress="Clip",
+                           activations_compress_param={"maxbits":2})
     n.relu1 = L.ReLU(n.fc1, in_place=True)
     n.score = L.InnerProduct(n.relu1, num_output=10, weight_filler=dict(type='xavier'))
     n.loss =  L.SoftmaxWithLoss(n.score, n.label)
@@ -59,9 +63,9 @@ def lenet(lmdb, batch_size):
 train_net_path=caffe_root+'examples/mnist/lenet_auto_quantization_train.prototxt'
 test_net_path=caffe_root+'examples/mnist/lenet_auto_quantization_test.prototxt'
 train_batchsize=64
-train_epoch=int(50000/train_batchsize)
+train_epoch=floor(50000/train_batchsize)
 test_batchsize=100
-test_epoch=int(10000/test_batchsize)
+test_epoch=floor(10000/test_batchsize)
 with open(train_net_path, 'w') as f:
     f.write(str(lenet(caffe_root+'examples/mnist/mnist_train_lmdb', train_batchsize)))
 with open(test_net_path, 'w') as f:
@@ -70,7 +74,6 @@ with open(test_net_path, 'w') as f:
 
 
 ```python
-### define solver
 solver_config_path=caffe_root+'examples/mnist/lenet_auto_quantization_solver.prototxt'
 from caffe.proto import caffe_pb2
 s = caffe_pb2.SolverParameter()
@@ -116,6 +119,8 @@ solver = None  # ignore this workaround for lmdb data (can't instantiate two sol
 solver = caffe.get_solver(solver_config_path)
 ```
 
+# Training
+
 
 ```python
 epoches = 20
@@ -125,7 +130,7 @@ train_loss = zeros(epoches)
 test_acc = zeros(epoches)
 # the main solver loop
 for ep in range(epoches):
-    solver.step(train_epoch)  # run one epoch
+    solver.step(int(train_epoch))  # run one epoch
     # store the train loss
     train_loss[ep] = solver.net.blobs['loss'].data
     correct = 0
@@ -145,26 +150,26 @@ ax2.set_ylabel('test accuracy')
 ax2.set_title('Test Accuracy: {:.2f}'.format(test_acc[-1]))
 ```
 
-    epoch 0: train loss=0.0551, test accuracy=0.9791
-    epoch 1: train loss=0.0110, test accuracy=0.9864
-    epoch 2: train loss=0.0101, test accuracy=0.9881
-    epoch 3: train loss=0.0010, test accuracy=0.9891
-    epoch 4: train loss=0.0005, test accuracy=0.9878
-    epoch 5: train loss=0.0046, test accuracy=0.9900
-    epoch 6: train loss=0.0146, test accuracy=0.9904
-    epoch 7: train loss=0.0022, test accuracy=0.9910
-    epoch 8: train loss=0.0088, test accuracy=0.9902
-    epoch 9: train loss=0.0041, test accuracy=0.9900
-    epoch 10: train loss=0.0010, test accuracy=0.9903
-    epoch 11: train loss=0.0068, test accuracy=0.9913
-    epoch 12: train loss=0.0141, test accuracy=0.9915
-    epoch 13: train loss=0.0077, test accuracy=0.9906
-    epoch 14: train loss=0.0021, test accuracy=0.9911
-    epoch 15: train loss=0.0013, test accuracy=0.9897
-    epoch 16: train loss=0.0089, test accuracy=0.9905
-    epoch 17: train loss=0.0034, test accuracy=0.9911
-    epoch 18: train loss=0.0075, test accuracy=0.9916
-    epoch 19: train loss=0.0006, test accuracy=0.9909
+    epoch 0: train loss=0.0722, test accuracy=0.9736
+    epoch 1: train loss=0.0528, test accuracy=0.9797
+    epoch 2: train loss=0.0113, test accuracy=0.9833
+    epoch 3: train loss=0.0100, test accuracy=0.9868
+    epoch 4: train loss=0.0012, test accuracy=0.9882
+    epoch 5: train loss=0.0006, test accuracy=0.9865
+    epoch 6: train loss=0.0047, test accuracy=0.9894
+    epoch 7: train loss=0.0160, test accuracy=0.9896
+    epoch 8: train loss=0.0043, test accuracy=0.9886
+    epoch 9: train loss=0.0090, test accuracy=0.9905
+    epoch 10: train loss=0.0050, test accuracy=0.9887
+    epoch 11: train loss=0.0014, test accuracy=0.9894
+    epoch 12: train loss=0.0059, test accuracy=0.9896
+    epoch 13: train loss=0.0100, test accuracy=0.9911
+    epoch 14: train loss=0.0106, test accuracy=0.9902
+    epoch 15: train loss=0.0028, test accuracy=0.9904
+    epoch 16: train loss=0.0013, test accuracy=0.9889
+    epoch 17: train loss=0.0095, test accuracy=0.9904
+    epoch 18: train loss=0.0032, test accuracy=0.9903
+    epoch 19: train loss=0.0071, test accuracy=0.9908
 
 
 
@@ -175,7 +180,7 @@ ax2.set_title('Test Accuracy: {:.2f}'.format(test_acc[-1]))
 
 
 
-![png](output_5_2.png)
+![png](output_4_2.png)
 
 
 
@@ -207,10 +212,10 @@ print(data3.reshape(-1)[:5])
 imshow(data3[:,0].reshape(8, 8, 24, 24).transpose(0, 2, 1, 3).reshape(8*24, 8*24), cmap='gray')
 ```
 
-    restore alpha to integer: alpha=72.000000
-    [ 19.          13.00000095   7.00000048 -14.99999905  19.        ]
-    [ 1.  0. -1.  1.  1.]
-    [ 4.  4.  4.  4.  4.]
+    [ 0.99999994  0.99999994  0.99999994  0.          0.99999994]
+    [  1.00000000e+00  -5.96046448e-08  -1.00000000e+00   2.00000000e+00
+       2.00000000e+00]
+    [ 0.  0.  0.  0.  0.]
 
 
 
