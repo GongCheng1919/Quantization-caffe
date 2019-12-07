@@ -130,18 +130,22 @@ def lenet(lmdb, batch_size):
     n.data, n.label = L.Data(batch_size=batch_size, backend=P.Data.LMDB, source=lmdb,
                              transform_param=dict(scale=1./255), ntop=2)
     n.conv1 = L.Convolution(n.data, kernel_size=5, num_output=20, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"], #compress methods for kernel and bias
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}], #compress param for kernel and bias
+                           weights_compress=["ULQ","ULQ"], #compress methods for kernel and bias
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}], #compress param for kernel and bias
                            activations_compress="Clip",#compress method for activations
                            activations_compress_param={"maxbits":8})#compress param for activations
     n.pool1 = L.Pooling(n.conv1, kernel_size=2, stride=2, pool=P.Pooling.MAX)
     n.conv2 = L.Convolution(n.pool1, kernel_size=5, num_output=50, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"],
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}],
+                           weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
                            activations_compress="Clip",
                            activations_compress_param={"maxbits":8})
     n.pool2 = L.Pooling(n.conv2, kernel_size=2, stride=2, pool=P.Pooling.MAX)
-    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'))
+    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'),
+                            weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
+                           activations_compress="Clip",
+                           activations_compress_param={"maxbits":2})
     n.relu1 = L.ReLU(n.fc1, in_place=True)
     n.score = L.InnerProduct(n.relu1, num_output=10, weight_filler=dict(type='xavier'))
     n.loss =  L.SoftmaxWithLoss(n.score, n.label)
@@ -212,7 +216,7 @@ train_loss = zeros(epoches)
 test_acc = zeros(epoches)
 # the main solver loop
 for ep in range(epoches):
-    solver.step(train_epoch)  # run one epoch
+    solver.step(int(train_epoch))  # run one epoch
     # store the train loss
     train_loss[ep] = solver.net.blobs['loss'].data
     correct = 0
@@ -231,7 +235,38 @@ ax1.set_ylabel('train loss')
 ax2.set_ylabel('test accuracy')
 ax2.set_title('Test Accuracy: {:.2f}'.format(test_acc[-1]))
 ```
-![training_curve](output_5_2.png)
+
+    epoch 0: train loss=0.0722, test accuracy=0.9736
+    epoch 1: train loss=0.0528, test accuracy=0.9797
+    epoch 2: train loss=0.0113, test accuracy=0.9833
+    epoch 3: train loss=0.0100, test accuracy=0.9868
+    epoch 4: train loss=0.0012, test accuracy=0.9882
+    epoch 5: train loss=0.0006, test accuracy=0.9865
+    epoch 6: train loss=0.0047, test accuracy=0.9894
+    epoch 7: train loss=0.0160, test accuracy=0.9896
+    epoch 8: train loss=0.0043, test accuracy=0.9886
+    epoch 9: train loss=0.0090, test accuracy=0.9905
+    epoch 10: train loss=0.0050, test accuracy=0.9887
+    epoch 11: train loss=0.0014, test accuracy=0.9894
+    epoch 12: train loss=0.0059, test accuracy=0.9896
+    epoch 13: train loss=0.0100, test accuracy=0.9911
+    epoch 14: train loss=0.0106, test accuracy=0.9902
+    epoch 15: train loss=0.0028, test accuracy=0.9904
+    epoch 16: train loss=0.0013, test accuracy=0.9889
+    epoch 17: train loss=0.0095, test accuracy=0.9904
+    epoch 18: train loss=0.0032, test accuracy=0.9903
+    epoch 19: train loss=0.0071, test accuracy=0.9908
+
+
+
+
+
+    Text(0.5,1,'Test Accuracy: 0.99')
+
+
+
+
+![training_curve](output_4_2.png)
 
 ### Get and restore weights and activations for further processing
 ```python
@@ -261,7 +296,16 @@ print(data2.reshape(-1)[:5])
 print(data3.reshape(-1)[:5])
 imshow(data3[:,0].reshape(8, 8, 24, 24).transpose(0, 2, 1, 3).reshape(8*24, 8*24), cmap='gray')
 ```
-![out_img](output_6_1.png)
+
+    [ 0.99999994  0.99999994  0.99999994  0.          0.99999994]
+    [  1.00000000e+00  -5.96046448e-08  -1.00000000e+00   2.00000000e+00
+       2.00000000e+00]
+    [ 0.  0.  0.  0.  0.]
+
+
+
+
+![out_img](output_5_2.png)
 
 Please cite our works in your publications if it helps your research:
 ```
