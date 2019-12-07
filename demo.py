@@ -20,18 +20,22 @@ def lenet(lmdb, batch_size):
     n.data, n.label = L.Data(batch_size=batch_size, backend=P.Data.LMDB, source=lmdb,
                              transform_param=dict(scale=1./255), ntop=2)
     n.conv1 = L.Convolution(n.data, kernel_size=5, num_output=20, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"], #compress methods for kernel and bias
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}], #compress param for kernel and bias
+                           weights_compress=["ULQ","ULQ"], #compress methods for kernel and bias
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}], #compress param for kernel and bias
                            activations_compress="Clip",#compress method for activations
                            activations_compress_param={"maxbits":8})#compress param for activations
     n.pool1 = L.Pooling(n.conv1, kernel_size=2, stride=2, pool=P.Pooling.MAX)
     n.conv2 = L.Convolution(n.pool1, kernel_size=5, num_output=50, weight_filler=dict(type='xavier'),
-                           weights_compress=["ULQ","Ternary_Quantize"],
-                           weights_compress_param=[{"maxbits":8},{"maxbits":8}],
+                           weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
                            activations_compress="Clip",
                            activations_compress_param={"maxbits":8})
     n.pool2 = L.Pooling(n.conv2, kernel_size=2, stride=2, pool=P.Pooling.MAX)
-    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'))
+    n.fc1 =   L.InnerProduct(n.pool2, num_output=500, weight_filler=dict(type='xavier'),
+                            weights_compress=["ULQ","ULQ"],
+                           weights_compress_param=[{"maxbits":2},{"maxbits":2}],
+                           activations_compress="Clip",
+                           activations_compress_param={"maxbits":2})
     n.relu1 = L.ReLU(n.fc1, in_place=True)
     n.score = L.InnerProduct(n.relu1, num_output=10, weight_filler=dict(type='xavier'))
     n.loss =  L.SoftmaxWithLoss(n.score, n.label)
@@ -100,7 +104,7 @@ train_loss = zeros(epoches)
 test_acc = zeros(epoches)
 # the main solver loop
 for ep in range(epoches):
-    solver.step(train_epoch)  # run one epoch
+    solver.step(int(train_epoch))  # run one epoch
     # store the train loss
     train_loss[ep] = solver.net.blobs['loss'].data
     correct = 0
