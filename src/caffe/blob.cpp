@@ -1019,7 +1019,7 @@ void Blob<Dtype>:: ulq_weights(Phase phase,CompressParameter compress_param){
 			}else{
 				lambdak=Dtype(lambdalist[this->maxbits_-1]);
 			}
-			this->alpha_=lambdak*this->alpha_;
+			this->alpha_=lambdak*this->alpha_+1e-7;
 			//算法
 			caffe_cpu_ulq(this->count(), this->delta_, 1/this->alpha_, this->cpu_data(), this->mutable_cpu_quantize(), maxbits_);
 		}
@@ -1039,7 +1039,7 @@ void Blob<Dtype>:: ulq_weights(Phase phase,CompressParameter compress_param){
 			}else{
 				lambdak=Dtype(lambdalist[this->maxbits_-1]);
 			}
-			this->alpha_=lambdak*this->alpha_;
+			this->alpha_=lambdak*this->alpha_+1e-7;
 			//算法
 			caffe_gpu_ulq(this->count(), this->delta_, 1/this->alpha_, this->gpu_data(), this->mutable_gpu_quantize(), this->maxbits_);
 			//还原权值
