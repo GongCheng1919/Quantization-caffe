@@ -45,9 +45,9 @@ class Layer {
         blobs_.resize(layer_param_.blobs_size());
         for (int i = 0; i < layer_param_.blobs_size(); ++i) {
           blobs_[i].reset(new Blob<Dtype>());
-		  //¸ù¾İÑ¹Ëõ²ÎÊıÔØÈëÈ¨Öµ£º
-		  //Èç¹û´æÔÚÑ¹Ëõ²ÎÊı£¬ÔòÔØÈëÈ«¾«¶ÈÈ¨Öµ£¬Èç¹û´æÔÚÁ¿»¯ÖµÔòÔØÈë
-		  //Èç¹û²»´æÔÚÑ¹Ëõ²ÎÊı£¬ÔòÓÅÏÈÑ°ÕÒÁ¿»¯È¨ÖµÔØÈë£¬Èç¹û²»´æÔÚÁ¿»¯È¨Öµ£¬ÔòÔØÈëÈ«¾«¶ÈÈ¨Öµ
+		  //æ ¹æ®å‹ç¼©å‚æ•°è½½å…¥æƒå€¼ï¼š
+		  //å¦‚æœå­˜åœ¨å‹ç¼©å‚æ•°ï¼Œåˆ™è½½å…¥å…¨ç²¾åº¦æƒå€¼ï¼Œå¦‚æœå­˜åœ¨é‡åŒ–å€¼åˆ™è½½å…¥
+		  //å¦‚æœä¸å­˜åœ¨å‹ç¼©å‚æ•°ï¼Œåˆ™ä¼˜å…ˆå¯»æ‰¾é‡åŒ–æƒå€¼è½½å…¥ï¼Œå¦‚æœä¸å­˜åœ¨é‡åŒ–æƒå€¼ï¼Œåˆ™è½½å…¥å…¨ç²¾åº¦æƒå€¼
           if(i<layer_param_.weights_compress_size()){
 			LOG(INFO)<<layer_param_.name()<<" Priority loading Full Precision weights to float weights."
 			<<" Maybe you want to retrain compress NN from exist one.";
@@ -374,10 +374,10 @@ class Layer {
     param_propagate_down_[param_id] = value;
   }
 	/*
-  Ñ¹Ëõ·½·¨
+  å‹ç¼©æ–¹æ³•
   */
   void DataCompress(Blob<Dtype>* data, CompressParameter compress_param, string& compress_method, string compress_type="weights"){
-		//¿ÉÒÔÔÚ´Ë´¦¼ÆÊ±£¬Í³¼ÆÒ»ÏÂ¸ÃËã·¨µÄÔËĞĞÊ±
+		//å¯ä»¥åœ¨æ­¤å¤„è®¡æ—¶ï¼Œç»Ÿè®¡ä¸€ä¸‹è¯¥ç®—æ³•çš„è¿è¡Œæ—¶
 		if(compress_method=="" || compress_type==""){
 			LOG(FATAL)<<layer_param_.name()<<": Have no compress method name and type!";
 		}
@@ -421,7 +421,7 @@ class Layer {
 		bool has_compress_param=true;
 		if(i<layer_param_.weights_compress_size()){
 			//LOG(INFO)<<" weights_compress_.size()="<<weights_compress_.size()
-			//Ô¤´¦Àí£º¶ÁÈ¡Ñ¹Ëõ²ÎÊı£¨Ò»°ãÖ»»áÔÚµÚÒ»´ÎÔËĞĞ£©
+			//é¢„å¤„ç†ï¼šè¯»å–å‹ç¼©å‚æ•°ï¼ˆä¸€èˆ¬åªä¼šåœ¨ç¬¬ä¸€æ¬¡è¿è¡Œï¼‰
 			if(i>=layer_param_.weights_compress_param_size()){
 				if(phase_==TEST){
 					LOG(INFO) << "Cannot Find saved weights compression configrations for "<< weights_compress_[i]<<" (" << i+1<<">"<<layer_param_.weights_compress_param_size()<<")";
@@ -429,10 +429,10 @@ class Layer {
 				has_compress_param=false;
 				layer_param_.add_weights_compress_param();
 			}
-			//Ñ¹Ëõ
+			//å‹ç¼©
 			//LOG(INFO)<<layer_param_.name()<<" blobs["<<i<<"]";
 			DataCompress(&(*blobs_[i]),layer_param_.weights_compress_param(i),weights_compress_[i],"weights");
-			//ºó´¦Àí£º¸üĞÂÑ¹Ëõ²ÎÊı
+			//åå¤„ç†ï¼šæ›´æ–°å‹ç¼©å‚æ•°
 			if(phase_==TRAIN || !has_compress_param){
 				layer_param_.mutable_weights_compress_param(i)->set_delta(blobs_[i]->get_delta());
 				layer_param_.mutable_weights_compress_param(i)->set_alpha(blobs_[i]->get_alpha());
@@ -529,7 +529,7 @@ class Layer {
 	}
   }
   /*
-  ÇĞ»»¼ÆËãÈ¨ÖµÎªÑ¹ËõÈ¨Öµ
+  åˆ‡æ¢è®¡ç®—æƒå€¼ä¸ºå‹ç¼©æƒå€¼
   */
   void ExchangeCompressWeights(){
 	for(int i=0;i<blobs_.size();i++){
@@ -551,7 +551,7 @@ class Layer {
 	}
   }
   /*
-  ÇĞ»»¼ÆËãÈ¨ÖµÎªÈ«¾«¶ÈÈ¨Öµ
+  åˆ‡æ¢è®¡ç®—æƒå€¼ä¸ºå…¨ç²¾åº¦æƒå€¼
   */
   void ExchangeFullWeights(){
 	for(int i=0;i<blobs_.size();i++){
@@ -559,14 +559,14 @@ class Layer {
 		blobs_[i]->exchange_data_quantize(false);
 	}
   }
-  //Ñ¹Ëõ¼¤»îÖµ
-  //note:¼¤»îÖµÑ¹Ëõ±ØĞëÊÇÔÚÇ°Ïò´«²¥Ö®ºó£¬¼´»ñÈ¡ÁËÊä³öÖµ£¬ÆäÓÃÑ¹ËõÖµÌæ»»Ç°ÏòÊä³öºÍ·´Ïò¼ÆËãÌİ¶È
+  //å‹ç¼©æ¿€æ´»å€¼
+  //note:æ¿€æ´»å€¼å‹ç¼©å¿…é¡»æ˜¯åœ¨å‰å‘ä¼ æ’­ä¹‹åï¼Œå³è·å–äº†è¾“å‡ºå€¼ï¼Œå…¶ç”¨å‹ç¼©å€¼æ›¿æ¢å‰å‘è¾“å‡ºå’Œåå‘è®¡ç®—æ¢¯åº¦
   void CompressLayerActivations(const vector<Blob<Dtype>*>& top){
 	 //LOG(INFO)<<"top size = "<<top.size()<<std::endl;
 	for(int i=0;i<top.size();i++){
 		bool has_compress_param=true;
 		if(i<layer_param_.activations_compress_size()){
-			//Ô¤´¦Àí£º¶ÁÈ¡Ñ¹Ëõ²ÎÊı£¨Ò»°ãÖ»»áÔÚµÚÒ»´ÎÔËĞĞ£©
+			//é¢„å¤„ç†ï¼šè¯»å–å‹ç¼©å‚æ•°ï¼ˆä¸€èˆ¬åªä¼šåœ¨ç¬¬ä¸€æ¬¡è¿è¡Œï¼‰
 			if(i>=layer_param_.activations_compress_param_size()){
 				if(phase_==TEST){
 					LOG(INFO) << "Cannot Find saved activations compression configrations for "<< activations_compress_[i]<<" (" << i+1<<">"<<layer_param_.activations_compress_param_size()<<") "
@@ -576,9 +576,9 @@ class Layer {
 				layer_param_.add_activations_compress_param();
 				//layer_param_.add_activations_compress_param();
 			}
-			//¼¤»îÖµÑ¹Ëõ
+			//æ¿€æ´»å€¼å‹ç¼©
 			DataCompress(top[i],layer_param_.activations_compress_param(i),activations_compress_[i],"activations");
-			//ºó´¦Àí£º¸üĞÂÑ¹Ëõ²ÎÊı
+			//åå¤„ç†ï¼šæ›´æ–°å‹ç¼©å‚æ•°
 			if(phase_==TRAIN || !has_compress_param){
 				layer_param_.mutable_activations_compress_param(i)->set_delta(top[i]->get_delta());
 				layer_param_.mutable_activations_compress_param(i)->set_alpha(top[i]->get_alpha());
@@ -675,7 +675,7 @@ class Layer {
 	}
   }
   /*
-  ÇĞ»»¼ÆËãÈ¨ÖµÎªÑ¹ËõÈ¨Öµ
+  åˆ‡æ¢è®¡ç®—æƒå€¼ä¸ºå‹ç¼©æƒå€¼
   */
   void ExchangeCompressActivations(const vector<Blob<Dtype>*>& top){
 	for(int i=0;i<top.size();i++){
@@ -697,7 +697,7 @@ class Layer {
 	}
   }
   /*
-  ÇĞ»»¼ÆËãÈ¨ÖµÎªÈ«¾«¶ÈÈ¨Öµ
+  åˆ‡æ¢è®¡ç®—æƒå€¼ä¸ºå…¨ç²¾åº¦æƒå€¼
   */
   void ExchangeFullActivations(const vector<Blob<Dtype>*>& top){
 	for(int i=0;i<top.size();i++){
@@ -725,7 +725,7 @@ vector<shared_ptr<CompressParameter> > activations_compress_param_;
    *  the objective function. */
   vector<Dtype> loss_;
 
-  /*ÈıÖµ»¯²ÎÊı£¬¼´deltaºÍalpha*/
+  /*ä¸‰å€¼åŒ–å‚æ•°ï¼Œå³deltaå’Œalpha*/
 
  
   /** @brief Using the CPU device, compute the layer output. */
@@ -835,9 +835,9 @@ template <typename Dtype>
 inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
 	//LOG(INFO)<<" Get into layer "<<layer_param_.name()<<"'s Forward!";
-	  //ÔÚForwardÖ®Ç°£¬¶ÔÈ¨Öµ×öÈıÖµ»¯:GC
+	  //åœ¨Forwardä¹‹å‰ï¼Œå¯¹æƒå€¼åšä¸‰å€¼åŒ–:GC
 	CompressLayerWeights();
-	  //ÇĞ»»Ê¹ÓÃÈıÖµÈ¨Öµ´úÌæÈ«¾«¶ÈÈ¨Öµ½øĞĞÇ°Ïò´«²¥
+	  //åˆ‡æ¢ä½¿ç”¨ä¸‰å€¼æƒå€¼ä»£æ›¿å…¨ç²¾åº¦æƒå€¼è¿›è¡Œå‰å‘ä¼ æ’­
 	ExchangeCompressWeights();
   Dtype loss = 0;
   Reshape(bottom, top);
@@ -870,28 +870,28 @@ inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom,
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
-	//ÇĞ»»Ê¹ÓÃÈ«¾«¶ÈÈ¨Öµ
+	//åˆ‡æ¢ä½¿ç”¨å…¨ç²¾åº¦æƒå€¼
 	ExchangeFullWeights();
-	//¶Ô¼¤»îÖµ×öÑ¹Ëõ
+	//å¯¹æ¿€æ´»å€¼åšå‹ç¼©
 	//LOG(INFO)<<"go into CompressLayerActivations"<<std::endl;
 	CompressLayerActivations(top);
-	//ÇĞ»»¼¤»îÖµÎªÑ¹Ëõ±íÊ¾
+	//åˆ‡æ¢æ¿€æ´»å€¼ä¸ºå‹ç¼©è¡¨ç¤º
 	//ExchangeCompressActivations(top);
-	if(false && phase_==TEST){//²âÊÔ¸Ã¶ÎºÄÊ±:ºÄÊ±Ì«ÑÏÖØ£¬¶ªÆú£¡
-		//»ñÈ¡µ±Ç°¼¤»î²ãµÄ×î´óÖµ£¬Ö»ĞèÒª¼ÆËãµ±Ç°Öµ´¦ÒÔalpha¼°³õÊ¼µÄ2^8´Î·½¾ÍºÃÁË
-		//Ê×ÏÈ¼ÆËãµ±Ç°²ãÈ¨ÖµµÄalphaÊÇ¶àÉÙ
+	if(false && phase_==TEST){//æµ‹è¯•è¯¥æ®µè€—æ—¶:è€—æ—¶å¤ªä¸¥é‡ï¼Œä¸¢å¼ƒï¼
+		//è·å–å½“å‰æ¿€æ´»å±‚çš„æœ€å¤§å€¼ï¼Œåªéœ€è¦è®¡ç®—å½“å‰å€¼å¤„ä»¥alphaåŠåˆå§‹çš„2^8æ¬¡æ–¹å°±å¥½äº†
+		//é¦–å…ˆè®¡ç®—å½“å‰å±‚æƒå€¼çš„alphaæ˜¯å¤šå°‘
 		if(layer_param_.weights_compress_param_size()>0){
 			clock_t calctime;
 			calctime=clock();
 			int fixedpos=layer_param_.weights_compress_param(0).fixedpos();
 			float alpha=layer_param_.weights_compress_param(0).alpha();
 			alpha=alpha*pow(2,fixedpos);
-			//float ascale=pow(2,8)*alpha;//¼ÙÉèÊäÈëÌØÕ÷Ëõ·ÅÊÇ2^-8.
+			//float ascale=pow(2,8)*alpha;//å‡è®¾è¾“å…¥ç‰¹å¾ç¼©æ”¾æ˜¯2^-8.
 			static int topbit=0;
 			int ttopbit=topbit;
-			//¼ÆËãtopÖĞ¾ø¶Ô×î´óÖµºÍ¾ø¶Ô×îĞ¡Öµ¡£
+			//è®¡ç®—topä¸­ç»å¯¹æœ€å¤§å€¼å’Œç»å¯¹æœ€å°å€¼ã€‚
 			for (int i=0;i<top.size();i++){
-				//ÕÒµ½×î´óÖµ
+				//æ‰¾åˆ°æœ€å¤§å€¼
 				const Dtype* temp= top[i]->cpu_data();
 				for(int j=0;j<top[i]->count();j++){
 					const Dtype a=temp[j]>0?temp[j]:-temp[j];
@@ -916,9 +916,9 @@ template <typename Dtype>
 inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
-	//ÇĞ»»Ê¹ÓÃÈıÖµÈ¨Öµ´úÌæÈ«¾«¶ÈÈ¨Öµ½øĞĞ·´Ïò´«²¥
+	//åˆ‡æ¢ä½¿ç”¨ä¸‰å€¼æƒå€¼ä»£æ›¿å…¨ç²¾åº¦æƒå€¼è¿›è¡Œåå‘ä¼ æ’­
 	ExchangeCompressWeights();
-	//ÇĞ»»¼¤»îÖµÎªÑ¹Ëõ±íÊ¾
+	//åˆ‡æ¢æ¿€æ´»å€¼ä¸ºå‹ç¼©è¡¨ç¤º
 	//ExchangeCompressActivations(top);
 	
   switch (Caffe::mode()) {
@@ -931,23 +931,23 @@ inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
   default:
     LOG(FATAL) << "Unknown caffe mode.";
   }
-    //ÇĞ»»Ê¹ÓÃÈ«¾«¶ÈÈ¨Öµ½øĞĞÈ¨Öµ¸üĞÂ
+    //åˆ‡æ¢ä½¿ç”¨å…¨ç²¾åº¦æƒå€¼è¿›è¡Œæƒå€¼æ›´æ–°
 	ExchangeFullWeights();
-	  //ÇĞ»»Ê¹ÓÃÈ«¾«¶È¼¤»îÖµ½øĞĞÈ¨Öµ¸üĞÂ£ºÊÂÊµÉÏ²¢Ã»ÓĞ±ØÒª£¬
-	  //ÒòÎªÒÑ¾­Ê¹ÓÃÁËÑ¹Ëõtop¼ÆËã·´ÏòÌİ¶È£¬µ«ÊÇÎªÁËºóĞøÅú´ÎÄÜ¹»ÒÀ´ÎÒÔÈ«¾«¶È->Ñ¹ËõÖµµÄÁ÷³Ì£¬¿ÉÒÔ¿¼ÂÇ´ò¿ª
+	  //åˆ‡æ¢ä½¿ç”¨å…¨ç²¾åº¦æ¿€æ´»å€¼è¿›è¡Œæƒå€¼æ›´æ–°ï¼šäº‹å®ä¸Šå¹¶æ²¡æœ‰å¿…è¦ï¼Œ
+	  //å› ä¸ºå·²ç»ä½¿ç”¨äº†å‹ç¼©topè®¡ç®—åå‘æ¢¯åº¦ï¼Œä½†æ˜¯ä¸ºäº†åç»­æ‰¹æ¬¡èƒ½å¤Ÿä¾æ¬¡ä»¥å…¨ç²¾åº¦->å‹ç¼©å€¼çš„æµç¨‹ï¼Œå¯ä»¥è€ƒè™‘æ‰“å¼€
 	//ExchangeFullActivations(top);
 }
 
 // Serialize LayerParameter to protocol buffer
 template <typename Dtype>
 void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {
+  //å¦‚æœéœ€è¦ä¸‰å€¼åŒ–ï¼Œåˆ™å¯¹æœ€æ–°çš„å‚æ•°ä¸‰å€¼åŒ–ï¼Œç„¶åå†™å…¥æ–‡æœ¬
+  CompressLayerWeights();
+  //å¦‚æœæœ‰æƒå€¼éœ€è¦ä¸‰å€¼åŒ–ï¼Œåˆ™åªå­˜å‚¨ä¸‰å€¼æƒå€¼
+  //ExchangeCompressWeights();
   param->Clear();
   param->CopyFrom(layer_param_);
   param->clear_blobs();
-  //Èç¹ûĞèÒªÈıÖµ»¯£¬Ôò¶Ô×îĞÂµÄ²ÎÊıÈıÖµ»¯£¬È»ºóĞ´ÈëÎÄ±¾
-  CompressLayerWeights();
-  //Èç¹ûÓĞÈ¨ÖµĞèÒªÈıÖµ»¯£¬ÔòÖ»´æ´¢ÈıÖµÈ¨Öµ
-  //ExchangeCompressWeights();
   for (int i = 0; i < blobs_.size(); ++i) {
 	if(i<layer_param_.weights_compress_size()){
 		blobs_[i]->ToProto(param->add_blobs(), write_diff,true);
@@ -955,7 +955,7 @@ void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff) {
 		blobs_[i]->ToProto(param->add_blobs(), write_diff,false);
 	}
   }
-  //ÇĞ»»Ê¹ÓÃÈ«¾«¶ÈÈ¨Öµ½øĞĞÑµÁ·
+  //åˆ‡æ¢ä½¿ç”¨å…¨ç²¾åº¦æƒå€¼è¿›è¡Œè®­ç»ƒ
   ExchangeFullWeights();
 }
 
