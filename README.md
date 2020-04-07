@@ -103,6 +103,9 @@ for layer in net.layers:
 Note: for ease of calculation, all parameters of the quantized model have been scaled. If you want to get parameters 
 of the integer (such as alpha), see the following steps
 
+# Examples
+- [Hwo to train ResNet with uL2Q](How to train resnet18 with uL2Q.ipynb)
+
 # Demo
 We use lenet5 as a demo. You can follow these steps or run ```python ./demo.py``` directly 
 (using your python version which install the pycaffe) or going to [quantization demo](quantization_demo.md).
