@@ -104,7 +104,7 @@ Note: for ease of calculation, all parameters of the quantized model have been s
 of the integer (such as alpha), see the following steps
 
 # Examples
-- [Hwo to train ResNet with uL2Q](How to train resnet18 with uL2Q.ipynb)
+- ResNet [How to train ResNet with uL2Q](How_to_train_resnet18_with_uL2Q.ipynb)
 
 # Demo
 We use lenet5 as a demo. You can follow these steps or run ```python ./demo.py``` directly 
